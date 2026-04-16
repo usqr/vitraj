@@ -831,6 +831,10 @@ def _build_override_qss(c):
 		'QPlainTextEdit { color: %s; }'
 		% c.get('text_primary', _DEFAULTS['text_primary'])
 	)
+	rules.append(
+		'#preview-header { color: %s; }'
+		% c.get('text_primary', _DEFAULTS['text_primary'])
+	)
 
 	rules.append(
 		'QHeaderView, QHeaderView::section { '

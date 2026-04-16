@@ -70,6 +70,7 @@ class PreviewWidget(QWidget):
 		layout.setSpacing(0)
 
 		self._header = QLabel()
+		self._header.setObjectName('preview-header')
 		self._header.setWordWrap(True)
 		self._header.setStyleSheet(
 			'QLabel { padding: 4px 8px; font-weight: bold; }'
@@ -94,7 +95,7 @@ class PreviewWidget(QWidget):
 		image_layout.setSpacing(0)
 		self._image_info = QLabel()
 		self._image_info.setStyleSheet(
-			'QLabel { padding: 2px 8px; color: gray; font-size: 11px; }'
+			'QLabel { padding: 2px 8px; font-size: 11px; }'
 		)
 		image_layout.addWidget(self._image_info)
 		self._image_scroll = QScrollArea()
@@ -113,7 +114,7 @@ class PreviewWidget(QWidget):
 		self._fallback = QLabel()
 		self._fallback.setAlignment(Qt.AlignCenter)
 		self._fallback.setWordWrap(True)
-		self._fallback.setStyleSheet('QLabel { color: gray; padding: 20px; }')
+		self._fallback.setStyleSheet('QLabel { padding: 20px; }')
 		self._stack.addWidget(self._fallback)
 
 		layout.addWidget(self._stack)
