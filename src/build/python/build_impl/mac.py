@@ -121,19 +121,26 @@ def _staple(file_path):
 def _notarize(file_path):
 	"""Submit ``file_path`` (a .zip or .dmg) to Apple's notary service.
 
-	Uses notarytool with Apple ID + app-specific password auth. ``altool``'s
-	notarization service was retired by Apple in November 2023.
+	Uses ``notarytool`` with a pre-configured keychain profile (set up by
+	``xcrun notarytool store-credentials``) so the Apple ID password never
+	appears on the command line. ``altool``'s notarization service was
+	retired by Apple in November 2023.
+
+	Env:
+	    NOTARYTOOL_PROFILE: keychain profile name (required).
+	    NOTARYTOOL_KEYCHAIN: keychain path; if unset, the default login
+	        keychain is used (matches local-dev expectations).
 	"""
-	apple_id = _require_env('APPLE_ID')
-	password = _require_env('APPLE_APP_PASSWORD')
-	team_id = _require_env('APPLE_TEAM_ID')
-	run([
+	profile = _require_env('NOTARYTOOL_PROFILE')
+	args = [
 		'xcrun', 'notarytool', 'submit', file_path,
-		'--apple-id', apple_id,
-		'--password', password,
-		'--team-id', team_id,
+		'--keychain-profile', profile,
 		'--wait',
-	], check=True)
+	]
+	keychain = os.environ.get('NOTARYTOOL_KEYCHAIN', '').strip()
+	if keychain:
+		args += ['--keychain', keychain]
+	run(args, check=True)
 
 def _require_env(name):
 	value = os.environ.get(name, '').strip()

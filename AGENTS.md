@@ -249,13 +249,19 @@ Required secrets to enable signing:
 | `APPLE_APP_PASSWORD` | App-specific password generated at appleid.apple.com |
 | `APPLE_TEAM_ID` | 10-character Team ID from the Developer portal |
 
-The "Check signing config" step decides whether to take the signing path; the
-"Set up signing keychain" step imports the `.p12` into a temp keychain and
-extracts the identity name into `steps.signing.outputs.identity`. The
-`build_impl/mac.py` `sign()` and `sign_installer()` commands read
-`MAC_CODESIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`
-from the environment and notarize via `notarytool` (Apple retired `altool`'s
-notarization service in November 2023).
+The "Check signing config" step decides whether to take the signing path. The
+"Set up signing keychain" step imports the `.p12` into a temp keychain, runs
+`xcrun notarytool store-credentials` so the app-specific password is held in
+the keychain instead of passed on the command line, and exposes the resolved
+identity / keychain path / profile name as step outputs. The `build_impl/mac.py`
+`sign()` and `sign_installer()` commands read `MAC_CODESIGN_IDENTITY` (for
+codesign) and `NOTARYTOOL_PROFILE` + `NOTARYTOOL_KEYCHAIN` (for notarization)
+from the environment. Apple retired `altool`'s notarization service in
+November 2023, so `notarytool` is the only supported path.
+
+A trailing "Tear down signing keychain" step (`if: always()`) removes the temp
+keychain from the user search list and deletes it, so a failed run leaves no
+residue on the runner (which itself is also destroyed).
 
 ### Remaining work
 

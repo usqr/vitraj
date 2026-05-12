@@ -77,11 +77,15 @@ jobs:
         env:
           APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
           KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
           KEYCHAIN_PW=$(openssl rand -base64 32)
           CERT_PATH="$RUNNER_TEMP/cert.p12"
+          PROFILE="vitraj-notary"
 
           echo "$APPLE_CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
           security create-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN"
@@ -96,6 +100,15 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '" ')
           rm -f "$CERT_PATH"
 
+          # Store notarization credentials in the keychain so notarytool can
+          # reference them by profile name. This keeps the app-specific
+          # password off subsequent process command lines.
+          xcrun notarytool store-credentials "$PROFILE" \
+            --keychain "$KEYCHAIN" \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" >/dev/null
+
           IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
             | awk -F'"' '/Developer ID Application/ { print $2; exit }')
           if [ -z "$IDENTITY" ]; then
@@ -103,6 +116,8 @@ jobs:
             exit 1
           fi
           echo "identity=$IDENTITY" >> "$GITHUB_OUTPUT"
+          echo "keychain=$KEYCHAIN" >> "$GITHUB_OUTPUT"
+          echo "profile=$PROFILE" >> "$GITHUB_OUTPUT"
           echo "Found signing identity: $IDENTITY"
 
       - name: Freeze app
@@ -112,9 +127,8 @@ jobs:
         if: ${{ steps.signing.outputs.identity != '' }}
         env:
           MAC_CODESIGN_IDENTITY: ${{ steps.signing.outputs.identity }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARYTOOL_PROFILE: ${{ steps.signing.outputs.profile }}
+          NOTARYTOOL_KEYCHAIN: ${{ steps.signing.outputs.keychain }}
         run: python build.py sign
 
       - name: Build DMG
@@ -124,15 +138,27 @@ jobs:
         if: ${{ steps.signing.outputs.identity != '' }}
         env:
           MAC_CODESIGN_IDENTITY: ${{ steps.signing.outputs.identity }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          NOTARYTOOL_PROFILE: ${{ steps.signing.outputs.profile }}
+          NOTARYTOOL_KEYCHAIN: ${{ steps.signing.outputs.keychain }}
         run: python build.py sign_installer
 
       - name: Verify DMG
         run: |
           test -f target/vitraj.dmg
           ls -lh target/vitraj.dmg
+
+      - name: Tear down signing keychain
+        if: always() && steps.signing.outputs.keychain != ''
+        env:
+          KEYCHAIN: ${{ steps.signing.outputs.keychain }}
+        run: |
+          # Remove our keychain from the user search list, then delete it.
+          # `|| true` so cleanup never masks an earlier failure.
+          REMAINING=$(security list-keychains -d user | tr -d '" ' \
+            | grep -vF "$KEYCHAIN" || true)
+          # shellcheck disable=SC2086
+          security list-keychains -d user -s $REMAINING || true
+          security delete-keychain "$KEYCHAIN" || true
 
       - name: Create GitHub Release
         env:
