@@ -224,7 +224,7 @@ Note: `".."` parent dir entries are always passed through filters at the model l
 - **macOS TCC**: Add `NS*UsageDescription` keys to `src/build/settings/mac.json` `info_plist_extra` for folder access.
 - **No unnecessary dependencies**: Prefer PyQt5 built-in capabilities. Use `try/except ImportError` for optional deps (PyMuPDF, Pillow) so the app works without them.
 
-## TODO: release pipeline
+## Release pipeline
 
 `.github/workflows/release.yml` builds the macOS app and DMG on every `v*`
 semver tag (or manual `workflow_dispatch`) and uploads `target/vitraj.dmg` to a
@@ -233,15 +233,32 @@ the tag as the version source of truth — it rewrites `version` in
 `src/build/settings/base.json` in-memory for the build, so devs don't need to
 land a version-bump commit before tagging.
 
-Still ad-hoc only, matching the manually-uploaded `1.7.4` release from
-2026-04-16. Remaining work:
+### Code signing & notarization (macOS)
 
-- [ ] Wire in Apple Developer ID signing + notarization. Needs GH secrets
-      (`APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
-      `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`) and an extra step that imports the
-      cert into the runner keychain before `python build.py freeze`. The
-      existing `build_impl/mac.py` already implements `sign()` / `_notarize()`
-      via `altool` — wire those into the workflow once secrets exist.
+The workflow conditionally signs and notarizes the app + DMG when the required
+GitHub secrets are present. Without them, it still produces a working ad-hoc
+signed build (users see a Gatekeeper "unidentified developer" warning).
+
+Required secrets to enable signing:
+
+| Secret | Value |
+|--------|-------|
+| `APPLE_CERTIFICATE_P12` | Base64-encoded Developer ID Application `.p12` (`base64 -i cert.p12`) |
+| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` |
+| `APPLE_ID` | Apple ID email associated with the Developer account |
+| `APPLE_APP_PASSWORD` | App-specific password generated at appleid.apple.com |
+| `APPLE_TEAM_ID` | 10-character Team ID from the Developer portal |
+
+The "Check signing config" step decides whether to take the signing path; the
+"Set up signing keychain" step imports the `.p12` into a temp keychain and
+extracts the identity name into `steps.signing.outputs.identity`. The
+`build_impl/mac.py` `sign()` and `sign_installer()` commands read
+`MAC_CODESIGN_IDENTITY`, `APPLE_ID`, `APPLE_APP_PASSWORD`, `APPLE_TEAM_ID`
+from the environment and notarize via `notarytool` (Apple retired `altool`'s
+notarization service in November 2023).
+
+### Remaining work
+
 - [ ] Decide auto-update channel. If/when the app polls GitHub Releases for
       updates, release naming/format becomes load-bearing — currently the
       asset is just `vitraj.dmg`, no per-version `.zip` is uploaded.
