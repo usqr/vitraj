@@ -37,13 +37,17 @@ class _FmanCompatLoader:
         pass
 
 
+# The loader is stateless, so one shared instance serves every lookup.
+_LOADER = _FmanCompatLoader()
+
+
 class _FmanCompatFinder:
     """Resolve ``fman`` and ``fman.*`` to the identical ``vitraj`` module."""
 
     def find_spec(self, fullname, path=None, target=None):
         if fullname != _SRC and not fullname.startswith(_SRC + '.'):
             return None
-        return importlib.util.spec_from_loader(fullname, _FmanCompatLoader())
+        return importlib.util.spec_from_loader(fullname, _LOADER)
 
 
 def install():
@@ -52,4 +56,8 @@ def install():
         return
     # Make sure the real package is importable before we start redirecting.
     import vitraj  # noqa: F401
+    # Must run before the stock PathFinder: since `fman` resolves to the vitraj
+    # module, PathFinder would otherwise locate `fman.impl` etc. via vitraj's
+    # inherited __path__ and re-execute them under the fman name - the very
+    # duplicate-tree clobber this shim exists to prevent.
     sys.meta_path.insert(0, _FmanCompatFinder())
