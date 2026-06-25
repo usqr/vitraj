@@ -51,7 +51,12 @@ class LocalFileSystem(FileSystem):
 			raise filenotfounderror(path)
 		try:
 			return os.stat(os_path)
-		except FileNotFoundError:
+		except (FileNotFoundError, PermissionError):
+			# A symlink whose target is missing (FileNotFoundError) or whose
+			# target lives behind a permission boundary (PermissionError, e.g.
+			# /usr/sbin/weakpass_edit -> authserver/...) makes the follow-stat
+			# fail. Fall back to lstat'ing the link itself. For a non-symlink
+			# this re-raises the same error, so genuine errors aren't masked.
 			return os.stat(os_path, follow_symlinks=False)
 	def size_bytes(self, path):
 		return self.stat(path).st_size
