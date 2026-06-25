@@ -3,7 +3,7 @@ from vitraj import PLATFORM
 from vitraj.url import join, as_url, splitscheme
 from core import LocalFileSystem
 from pathlib import Path
-from stat import S_IWRITE
+from stat import S_IWRITE, S_ISLNK
 from tempfile import TemporaryDirectory
 from unittest import TestCase, skipIf
 
@@ -73,6 +73,28 @@ class LocalFileSystemTest(TestCase):
 			path = Path(tmp_dir, 'symlink')
 			path.symlink_to('nonexistent')
 			self._fs.stat(_urlpath(path))
+	@skipIf(PLATFORM == 'Windows', 'Relies on POSIX directory permissions')
+	def test_stat_symlink_to_permission_protected_target(self):
+		# A symlink whose target lives behind a permission boundary (e.g.
+		# /usr/sbin/weakpass_edit -> authserver/...) makes the follow-stat raise
+		# PermissionError. stat() must fall back to lstat'ing the link itself
+		# rather than propagating the error -- otherwise scanning such a
+		# directory surfaces as a plugin error (e.g. StatusBarExtended).
+		if getattr(os, 'geteuid', lambda: 1)() == 0:
+			self.skipTest('Permission checks are bypassed when running as root')
+		with TemporaryDirectory() as tmp_dir:
+			protected = Path(tmp_dir, 'protected')
+			protected.mkdir()
+			target = protected / 'target'
+			target.touch()
+			link = Path(tmp_dir, 'link')
+			link.symlink_to(target)
+			protected.chmod(0o000)
+			try:
+				result = self._fs.stat(_urlpath(link))
+				self.assertTrue(S_ISLNK(result.st_mode))
+			finally:
+				protected.chmod(0o755)
 	def test_samefile(self):
 		this = _urlpath(__file__)
 		pardir = _urlpath(Path(__file__).parent)

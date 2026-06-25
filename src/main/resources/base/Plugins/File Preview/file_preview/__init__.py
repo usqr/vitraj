@@ -351,7 +351,12 @@ def _open_preview(pane):
 				url = file_view.model().url(current)
 			except (ValueError, RuntimeError):
 				url = None
-			preview.show_preview(url)
+			try:
+				preview.show_preview(url)
+			except RuntimeError:
+				# The preview widget's C++ object was already deleted (the panel
+				# was deactivated). Stop tracking so we don't fire again.
+				_disconnect_cursor_tracking(pane)
 
 		# Connect signal on the main thread (inside factory)
 		file_view.selectionModel().currentRowChanged.connect(on_cursor_changed)
@@ -359,14 +364,18 @@ def _open_preview(pane):
 			'callback': on_cursor_changed,
 			'file_view': file_view,
 		}
+		# The panel can be closed without going through _close_preview() — e.g.
+		# PanelModeListener (Core) deactivates the panel directly on go_to /
+		# switch_panes. Disconnect cursor tracking when the widget is destroyed
+		# so a later currentRowChanged doesn't fire on a deleted widget.
+		preview.destroyed.connect(lambda *_: _disconnect_cursor_tracking(pane))
 		preview.show_preview(file_url)
 		return preview
 
 	pane.window.activate_panel(pane, factory, _PANEL_ID)
 
 
-def _close_preview(pane):
-	# Disconnect cursor tracking before panel is destroyed
+def _disconnect_cursor_tracking(pane):
 	conn = _cursor_connections.pop(pane, None)
 	if conn:
 		try:
@@ -375,4 +384,9 @@ def _close_preview(pane):
 			)
 		except (TypeError, RuntimeError):
 			pass
+
+
+def _close_preview(pane):
+	# Disconnect cursor tracking before panel is destroyed
+	_disconnect_cursor_tracking(pane)
 	pane.window.deactivate_panel(pane)
