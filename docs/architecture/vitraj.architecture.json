@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "vitraj — dual-pane file manager",
+    "output": "vitraj-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/fman-users/fman",
+      "revision": "cb25fa9ea4d002b7e7862cd804feff300403af78"
+    },
+    "views": [
+      { "id": "startup", "label": "Startup path", "focus": ["bootstrap", "api", "window", "controller"], "note": "fbs boots the app context, which builds the main window and the keyboard controller." },
+      { "id": "list-a-directory", "label": "Listing a directory", "focus": ["pane", "model", "localfs"], "note": "The view drives a sorted/filtered model that walks the local filesystem on its worker thread." },
+      { "id": "plugins", "label": "Plugin surface", "focus": ["core", "aux", "pane"], "note": "Auto-discovered plugin classes attach commands and panels to every pane." }
+    ]
+  },
+  "layout": { "mode": "grid", "cols": 6, "gapX": 58, "gapY": 92, "cellW": 150, "cellH": 76 },
+  "components": [
+    { "id": "bootstrap", "type": "external", "label": "fbs bootstrap", "sublabel": "main.py", "row": 1, "col": 0,
+      "sources": [{ "path": "src/main/python/vitraj/main.py", "label": "entry point" }] },
+    { "id": "controller", "type": "backend", "label": "Controller", "sublabel": "key dispatch", "row": 0, "col": 1,
+      "sources": [{ "path": "src/main/python/vitraj/impl/controller.py" }] },
+    { "id": "api", "type": "backend", "label": "Public API", "sublabel": "vitraj/__init__.py", "row": 1, "col": 1,
+      "sources": [{ "path": "src/main/python/vitraj/__init__.py", "label": "DirectoryPane, Window" }] },
+    { "id": "core", "type": "external", "label": "Core plugin", "sublabel": "commands + fs", "row": 0, "col": 2,
+      "sources": [{ "path": "src/main/resources/base/Plugins/Core/core/commands/__init__.py" }] },
+    { "id": "window", "type": "frontend", "label": "MainWindow", "sublabel": "PanelManager", "row": 1, "col": 2,
+      "sources": [{ "path": "src/main/python/vitraj/impl/widgets.py", "label": "MainWindow" }] },
+    { "id": "aux", "type": "external", "label": "Feature plugins", "sublabel": "preview / theme", "row": 0, "col": 3 },
+    { "id": "pane", "type": "frontend", "label": "DirectoryPane", "sublabel": "FileListView", "row": 1, "col": 3,
+      "sources": [{ "path": "src/main/python/vitraj/impl/view/__init__.py", "label": "FileListView" }] },
+    { "id": "settings", "type": "database", "label": "Settings JSON", "sublabel": "Panes.json", "row": 2, "col": 3 },
+    { "id": "model", "type": "backend", "label": "Model", "sublabel": "sort + filter · worker", "row": 1, "col": 4,
+      "sources": [{ "path": "src/main/python/vitraj/impl/model/model.py", "label": "Model + SortedFileSystemModel" }] },
+    { "id": "localfs", "type": "backend", "label": "Local FileSystem", "sublabel": "file://", "row": 1, "col": 5,
+      "sources": [{ "path": "src/main/resources/base/Plugins/Core/core/fs/local/__init__.py" }] }
+  ],
+  "connections": [
+    { "id": "boot", "from": "bootstrap", "to": "api", "label": "boot", "variant": "emphasis" },
+    { "id": "build-window", "from": "api", "to": "window", "label": "builds", "variant": "emphasis", "labelDy": 16 },
+    { "id": "keys", "from": "window", "to": "controller", "label": "key events" },
+    { "id": "dispatch", "from": "controller", "to": "core", "label": "run command" },
+    { "id": "run-command", "from": "core", "to": "pane", "label": "acts on pane", "labelDx": -46 },
+    { "id": "host-panes", "from": "window", "to": "pane", "label": "two panes", "variant": "emphasis", "labelDy": 44 },
+    { "id": "view-model", "from": "pane", "to": "model", "label": "view model" },
+    { "id": "list-dir", "from": "model", "to": "localfs", "label": "list dir", "variant": "emphasis" },
+    { "id": "activate-panel", "from": "aux", "to": "pane", "label": "activate_panel", "variant": "dashed", "labelDy": 40 },
+    { "id": "pane-settings", "from": "pane", "to": "settings", "label": "per-pane state", "labelDy": 40 }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Shell", "items": ["fbs / PyInstaller boots the ApplicationContext", "MainWindow owns the PanelManager and Splitter", "Controller maps key bindings to commands"] },
+    { "dot": "emerald", "title": "Model-View", "items": ["FileListView renders a QTableView", "SortedFileSystemModel adds sorting + filtering", "Model mutates only on its worker thread"] },
+    { "dot": "rose", "title": "Plugins", "items": ["Loader auto-discovers classes from plugin packages", "Core ships commands, listeners, and the file:// fs", "Feature plugins mount panels via activate_panel"] }
+  ]
+}
