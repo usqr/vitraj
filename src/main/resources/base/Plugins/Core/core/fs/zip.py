@@ -255,8 +255,10 @@ class _7ZipFileSystem(FileSystem):
 				if size_str:
 					size = int(size_str)
 			elif line.startswith('Modified = '):
-				mtime_str = line[len('Modified = '):]
+				mtime_str = line[len('Modified = '):].strip()
 				if mtime_str:
+					# 7-Zip >= ~22 emits fractional seconds (HH:MM:SS.fffffff); p7zip did not.
+					mtime_str = mtime_str.split('.', 1)[0]
 					mtime = datetime.strptime(mtime_str, '%Y-%m-%d %H:%M:%S')
 			elif line.startswith('Attributes = '):
 				attributes = line[len('Attributes = '):]
@@ -313,9 +315,9 @@ class AddToArchive(_7zipTaskWithProgress):
 				# This for instance happens on non-NTFS drives on Windows.
 				# We need to incur the cost of physically copying the file:
 				self._fman_fs.copy(as_url(src), as_url(dest))
+			# No '-l': 7-Zip 7zz follows symlinks and stores the target file by
+			# default when adding (it rejects '-l' as an unknown switch).
 			args = ['a', self._zip_path, self._path_in_zip]
-			if PLATFORM != 'Windows':
-				args.insert(1, '-l')
 			self.run_7zip_with_progress(args, cwd=tmp_dir)
 			dest_path = self._zip_path + '/' + self._path_in_zip
 			self._zip_fs.notify_file_added(dest_path)
