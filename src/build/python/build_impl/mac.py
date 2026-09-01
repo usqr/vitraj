@@ -41,6 +41,7 @@ def freeze():
 	# Without this, unsigned apps are silently denied access to Downloads etc.
 	run(['codesign', '--force', '--deep', '--sign', '-', path('${freeze_dir}')],
 		check=True)
+	_assert_bundle_is_arm64()
 
 def _strip_unused_from_bundle():
 	frameworks = path('${freeze_dir}/Contents/Frameworks')
@@ -74,6 +75,28 @@ def _strip_unused_from_bundle():
 			rmtree(p)
 		elif os.path.isfile(p):
 			remove(p)
+
+def _macho_archs(binary_path):
+	# `lipo -archs` prints e.g. "x86_64 arm64" for a fat binary, "arm64" for
+	# a thin one. Xcode command line tools are always present on macOS CI.
+	return run(
+		['lipo', '-archs', binary_path],
+		check=True, capture_output=True, text=True
+	).stdout.split()
+
+def _assert_bundle_is_arm64():
+	# Apple is removing general Rosetta 2 translation. Every executable we
+	# ship must run natively on Apple Silicon, so fail the build loudly if
+	# anything is x86_64-only.
+	macos_dir = path('${freeze_dir}/Contents/MacOS')
+	for name in ('vitraj', '7za'):
+		binary = join(macos_dir, name)
+		archs = _macho_archs(binary)
+		if 'arm64' not in archs:
+			raise RuntimeError(
+				'%s is not arm64-native (archs: %s). It would need Rosetta, '
+				'which Apple is removing.' % (binary, ' '.join(archs) or 'none')
+			)
 
 @command
 def sign():
