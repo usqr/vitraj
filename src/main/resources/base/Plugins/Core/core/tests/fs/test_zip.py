@@ -4,15 +4,40 @@ from core.tests import StubFS
 from datetime import date
 from vitraj.url import as_url, join, as_human_readable, splitscheme
 from os import listdir
+from os.path import join as path_join, dirname, abspath
 from pathlib import Path
 from shutil import copyfile
 from tempfile import TemporaryDirectory
 from unicodedata import normalize
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 from zipfile import ZipFile
 
 import os
 import os.path
+import subprocess
+import vitraj
+
+_VENDORED_MAC_7ZA = abspath(path_join(
+    dirname(__file__), '..', '..', '..', 'bin', 'mac', '7za'
+))
+
+@skipUnless(vitraj.PLATFORM == 'Mac', 'macOS-only vendored binary')
+class VendoredSevenZipArchTest(TestCase):
+	def test_vendored_mac_7za_is_universal(self):
+		# After Apple removes general Rosetta 2 translation, an x86_64-only
+		# helper cannot be spawned from the arm64 app. The vendored binary
+		# must carry an arm64 slice (universal keeps Intel working too).
+		out = subprocess.check_output(
+			['lipo', '-archs', _VENDORED_MAC_7ZA], text=True
+		).split()
+		self.assertIn('arm64', out, f'{_VENDORED_MAC_7ZA} archs: {out}')
+
+	def test_vendored_mac_7za_runs_and_reports_version(self):
+		# Sanity: the binary executes on this host and speaks the 7-Zip CLI.
+		out = subprocess.run(
+			[_VENDORED_MAC_7ZA], capture_output=True, text=True
+		).stdout
+		self.assertIn('7-Zip', out)
 
 class ZipFileSystemTest(TestCase):
 	def test_iterdir(self):
