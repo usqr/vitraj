@@ -4,7 +4,7 @@ from vitraj.impl.model.model import File, _NOT_LOADED
 from vitraj.impl.util.qt.thread import Executor
 from vitraj.url import splitscheme
 from vitraj_unittest.impl.model import StubFileSystem
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, Qt, pyqtSignal
 from random import shuffle, random
 from unittest import TestCase
 
@@ -106,15 +106,83 @@ class ModelRecordFilesTest(TestCase):
 		]
 		self._model._record_files(new_files, disappeared=['s://1'])
 		self._expect_data([('3',), ('0',), ('2',)])
+	def test_parent_dir_first_ascending(self):
+		self._model._record_files([
+			f('s://d/a', [c('a', 0)]),
+			f('s://d/..', [c('..', 1)]),
+			f('s://d/b', [c('b', 2)])
+		])
+		self._expect_data([('..',), ('a',), ('b',)])
+	def test_parent_dir_inserted_later_ascending(self):
+		self._model._record_files([
+			f('s://d/a', [c('a', 0)]),
+			f('s://d/b', [c('b', 2)])
+		])
+		self._model._record_files([f('s://d/..', [c('..', 1)])])
+		self._expect_data([('..',), ('a',), ('b',)])
+	def test_parent_dir_first_descending(self):
+		self._set_descending()
+		self._model._record_files([
+			f('s://d/a', [c_desc('a', 2)]),
+			f('s://d/..', [c_desc('..', 1)]),
+			f('s://d/b', [c_desc('b', 0)])
+		])
+		self._expect_data([('..',), ('a',), ('b',)])
+	def test_parent_dir_inserted_later_descending(self):
+		self._set_descending()
+		self._model._record_files([
+			f('s://d/a', [c_desc('a', 2)]),
+			f('s://d/b', [c_desc('b', 0)])
+		])
+		self._model._record_files([f('s://d/..', [c_desc('..', 1)])])
+		self._expect_data([('..',), ('a',), ('b',)])
+	def test_insert_descending(self):
+		self._set_descending()
+		self._model._record_files([
+			f('s://d/a', [c_desc('a', 2)]),
+			f('s://d/c', [c_desc('c', 0)])
+		])
+		self._model._record_files([f('s://d/b', [c_desc('b', 1)])])
+		self._expect_data([('a',), ('b',), ('c',)])
+	def test_move_descending(self):
+		self._set_descending()
+		self._model._record_files([
+			f('s://d/a', [c_desc('a', 2)]),
+			f('s://d/b', [c_desc('b', 1)]),
+			f('s://d/c', [c_desc('c', 0)])
+		])
+		self._model._record_files([f('s://d/c', [c_desc('c', 3)])])
+		self._expect_data([('c',), ('a',), ('b',)])
+	def test_parent_dir_first_after_sort_change(self):
+		self._model._record_files([
+			f('s://d/a', [Cell('a', 0, 2)]),
+			f('s://d/..', [Cell('..', 1, 1)]),
+			f('s://d/b', [Cell('b', 2, 0)])
+		])
+		self._expect_data([('..',), ('a',), ('b',)])
+		self._model.sort(0, Qt.DescendingOrder)
+		self._expect_data([('..',), ('a',), ('b',)])
+		self._model.sort(0, Qt.AscendingOrder)
+		self._expect_data([('..',), ('a',), ('b',)])
 	def test_random(self):
 		for num in list(range(6)) + [100]:
 			self._test_random(num)
 			self.tearDown()
 			self.setUp()
-	def _test_random(self, num=3):
+	def test_random_descending(self):
+		for num in list(range(6)) + [100]:
+			self._set_descending()
+			self._test_random(num, ascending=False)
+			self.tearDown()
+			self.setUp()
+	def _test_random(self, num=3, ascending=True):
 		to_url = lambda i: 's://%d' % i
 		from_url = lambda url: int(splitscheme(url)[1])
-		files = [f(to_url(i), [c(str(i), i)]) for i in range(num)]
+		# In descending mode, negate the sort value so the rows keep the same
+		# expected order as in ascending mode:
+		cell = (lambda s, v: c(s, v)) if ascending else \
+			   (lambda s, v: c_desc(s, -v))
+		files = [f(to_url(i), [cell(str(i), i)]) for i in range(num)]
 		self._model._record_files(files)
 		self._expect_data([(str(i),) for i in range(num)])
 		random_state = random.getstate()
@@ -128,13 +196,17 @@ class ModelRecordFilesTest(TestCase):
 			if i not in filtered_out and random.random() < .1:
 				order.pop(index)
 				disappeared.append(to_url(i))
-		new_files = [f(to_url(j), [c(str(j), i)]) for i, j in enumerate(order)]
+		new_files = [
+			f(to_url(j), [cell(str(j), i)]) for i, j in enumerate(order)
+		]
 		self._model._filters.append(filter_)
 		self._model._record_files(new_files, disappeared)
 		message = 'num was %d, random.getstate() was %r' % (num, random_state)
 		self._expect_data([
 			(str(i),) for i in order if i not in filtered_out
 		], message)
+	def _set_descending(self):
+		self._model = Model(self._fs, 'null://', [Column()], ascending=False)
 	def setUp(self):
 		super().setUp()
 		self._app = StubApp()
@@ -160,6 +232,9 @@ def f(url, cells, is_loaded=False, is_dir=False):
 
 def c(str_, sort_value_asc=0, sort_value_desc=_NOT_LOADED):
 	return Cell(str_, sort_value_asc, sort_value_desc)
+
+def c_desc(str_, sort_value_desc):
+	return Cell(str_, _NOT_LOADED, sort_value_desc)
 
 class StubApp(QObject):
 	aboutToQuit = pyqtSignal()
