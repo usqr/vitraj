@@ -2,7 +2,6 @@ from fbs_runtime import application_context as fbs_appctxt
 from fbs_runtime.application_context import cached_property
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from fbs_runtime.excepthook import StderrExceptionHandler
-from fbs_runtime.excepthook.sentry import SentryExceptionHandler
 from fbs_runtime.platform import is_mac
 from vitraj import PLATFORM, DATA_DIRECTORY, Window
 from vitraj.impl.controller import Controller
@@ -33,6 +32,7 @@ from vitraj.impl.usage_helper import UsageHelper
 from vitraj.impl.util import os_
 from vitraj.impl.util.qt import connect_once
 from vitraj.impl.util.settings import Settings
+from vitraj.impl.util.sentry import SentryExceptionHandler
 from vitraj.impl.view import ProxyStyle
 from vitraj.impl.widgets import MainWindow, SplashScreen, Application
 from os import makedirs
@@ -504,9 +504,9 @@ class FrozenApplicationContext(DevelopmentApplicationContext):
 		scope.set_extra('os_version', os_.version())
 		scope.set_extra('os_distribution', os_.distribution())
 	def _on_metrics_initialised(self):
-		self.sentry_exception_handler.scope.user = {
+		self.sentry_exception_handler.scope.set_user({
 			'id': self.metrics.get_user()
-		}
+		})
 	def _should_auto_update(self):
 		if not is_mac():
 			# On Windows and Linux, auto-updates are handled by external
