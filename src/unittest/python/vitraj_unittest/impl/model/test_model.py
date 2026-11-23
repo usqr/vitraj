@@ -5,7 +5,7 @@ from vitraj.impl.util.qt.thread import Executor
 from vitraj.url import splitscheme
 from vitraj_unittest.impl.model import StubFileSystem
 from PyQt5.QtCore import QObject, Qt, pyqtSignal
-from random import shuffle, random
+from random import shuffle
 from unittest import TestCase
 
 import random
