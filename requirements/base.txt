@@ -1,4 +1,4 @@
-fbs[sentry] @ http://build-system.fman.io/pro/b5aab865-bd29-4f23-992c-0eb4f3a24f33/0.9.4
+fbs[sentry] @ https://build-system.fman.io/pro/b5aab865-bd29-4f23-992c-0eb4f3a24f33/0.9.4
 # Keep sentry-sdk below 3: fbs_runtime calls configure_scope, which 3.0 removed.
 sentry-sdk>=2,<3
 PyQt5==5.15.11
