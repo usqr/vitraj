@@ -52,7 +52,10 @@ class RecordFiles:
 		# Finally, insert rows. In reverse order so later inserts are not
 		# affected by earlier ones:
 		insert_sortvals = ((self._m_sortval(f), f) for f in to_insert)
-		for sortval, f in sorted(insert_sortvals, reverse=True):
+		# Sort by the key only. A tie must not compare the File objects:
+		for sortval, f in sorted(
+			insert_sortvals, key=lambda pair: pair[0], reverse=True
+		):
 			rownum = self._get_rownum_for_sortval(sortval)
 			diff.append(DiffEntry.insert(rownum, [f]))
 		self._flush(diff)

@@ -28,11 +28,16 @@ class SortFilterTableModel(TableModel):
 		"""
 		self.set_rows(self._sorted(self._filter(self.get_rows())))
 	def _sorted(self, rows):
-		return sorted(
-			rows, key=self._get_sortval, reverse=not self._sort_ascending
-		)
+		return sorted(rows, key=self._get_sortval)
 	def _get_sortval(self, row):
-		return self.get_sort_value(row, self._sort_column, self._sort_ascending)
+		"""
+		Return a key that sorts ascending in both directions. RecordFiles
+		relies on this because it uses bisect to place rows.
+		"""
+		result = self.get_sort_value(
+			row, self._sort_column, self._sort_ascending
+		)
+		return result if self._sort_ascending else _Descending(result)
 	def _filter(self, rows):
 		return filter(self._accepts, rows)
 	def _accepts(self, row):
@@ -65,3 +70,22 @@ class SortFilterTableModel(TableModel):
 		except ValueError:
 			pass
 		self.update()
+
+class _Descending:
+	"""
+	Reverses the order of the wrapped value. Use it instead of
+	sorted(..., reverse=True) so that bisect also works in descending order.
+	"""
+	__slots__ = ('value',)
+	def __init__(self, value):
+		self.value = value
+	def __eq__(self, other):
+		if not isinstance(other, _Descending):
+			return NotImplemented
+		return self.value == other.value
+	def __lt__(self, other):
+		if not isinstance(other, _Descending):
+			return NotImplemented
+		return other.value < self.value
+	def __repr__(self):
+		return '_Descending(%r)' % (self.value,)

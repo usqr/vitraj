@@ -259,8 +259,13 @@ class Model(SortFilterTableModel, DragAndDrop):
 				col_val_desc = cell.sort_value_desc
 			cells.append(Cell(cell.str, col_val_asc, col_val_desc))
 		return File(row.url, row.icon, row.is_dir, cells, row.is_loaded)
+	def _get_sortval(self, row):
+		# Pin ".." to the top. `not _is_parent_entry(row)` is False only for
+		# "..". The key of the superclass sorts ascending in both directions,
+		# so ".." always comes first:
+		return not _is_parent_entry(row), super()._get_sortval(row)
 	def _accepts(self, row):
-		if row.key.endswith('/..'):
+		if _is_parent_entry(row):
 			return True
 		return super()._accepts(row)
 	@transaction(priority=4)
@@ -410,6 +415,9 @@ class Model(SortFilterTableModel, DragAndDrop):
 		self._worker.shutdown()
 
 _NOT_LOADED = object()
+
+def _is_parent_entry(row):
+	return row.key.endswith('/..')
 
 class File(Row):
 	def __init__(self, url, icon, is_dir, cells, is_loaded):
