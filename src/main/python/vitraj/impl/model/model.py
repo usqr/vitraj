@@ -260,8 +260,9 @@ class Model(SortFilterTableModel, DragAndDrop):
 			cells.append(Cell(cell.str, col_val_asc, col_val_desc))
 		return File(row.url, row.icon, row.is_dir, cells, row.is_loaded)
 	def _get_sortval(self, row):
-		# Pin ".." to the top. The key of the superclass is ascending in both
-		# sort directions, so False (= "..") always comes first:
+		# Pin ".." to the top. `not _is_parent_entry(row)` is False only for
+		# "..". The key of the superclass sorts ascending in both directions,
+		# so ".." always comes first:
 		return not _is_parent_entry(row), super()._get_sortval(row)
 	def _accepts(self, row):
 		if _is_parent_entry(row):

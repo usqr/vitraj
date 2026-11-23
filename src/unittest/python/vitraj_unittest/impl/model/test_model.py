@@ -136,6 +136,21 @@ class ModelRecordFilesTest(TestCase):
 		])
 		self._model._record_files([f('s://d/..', [c_desc('..', 1)])])
 		self._expect_data([('..',), ('a',), ('b',)])
+	def test_parent_dir_first_when_sort_values_tie(self):
+		for descending in (False, True):
+			if descending:
+				self._set_descending()
+			cell = c_desc if descending else c
+			self._model._record_files([
+				f('s://d/a', [cell('a', 0)]),
+				f('s://d/..', [cell('..', 0)]),
+				f('s://d/b', [cell('b', 0)])
+			])
+			# The order of a and b is not defined because their values tie:
+			m = self._model
+			names = [m.data(m.index(i, 0)) for i in range(m.rowCount())]
+			self.assertEqual('..', names[0])
+			self.assertEqual({'a', 'b'}, set(names[1:]))
 	def test_insert_descending(self):
 		self._set_descending()
 		self._model._record_files([
@@ -180,8 +195,7 @@ class ModelRecordFilesTest(TestCase):
 		from_url = lambda url: int(splitscheme(url)[1])
 		# In descending mode, negate the sort value so the rows keep the same
 		# expected order as in ascending mode:
-		cell = (lambda s, v: c(s, v)) if ascending else \
-			   (lambda s, v: c_desc(s, -v))
+		cell = c if ascending else (lambda s, v: c_desc(s, -v))
 		files = [f(to_url(i), [cell(str(i), i)]) for i in range(num)]
 		self._model._record_files(files)
 		self._expect_data([(str(i),) for i in range(num)])

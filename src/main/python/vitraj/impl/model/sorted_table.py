@@ -87,7 +87,5 @@ class _Descending:
 		if not isinstance(other, _Descending):
 			return NotImplemented
 		return other.value < self.value
-	def __hash__(self):
-		return hash(self.value)
 	def __repr__(self):
 		return '_Descending(%r)' % (self.value,)
