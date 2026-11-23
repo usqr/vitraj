@@ -1,4 +1,5 @@
 from fbs_runtime.excepthook import ExceptionHandler
+# Private module, but fbs is pinned to 0.9.4 and its own handler uses it too:
 from fbs_runtime.excepthook._util import RateLimiter
 
 import sentry_sdk
