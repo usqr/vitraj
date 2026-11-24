@@ -7,7 +7,7 @@ data to find the click points and to see which popups are open.
 Do not install this plugin for normal use.
 """
 
-from PyQt5.QtCore import QPoint, QThread, QTimer, Qt
+from PyQt5.QtCore import QPoint, QTimer, Qt
 from PyQt5.QtWidgets import (
 	QAbstractButton, QApplication, QFrame, QLabel, QMessageBox
 )
@@ -19,7 +19,8 @@ import tempfile
 import time
 
 _INTERVAL_MS = 200
-_timer = None
+# The timer is on the QApplication, so that a reload of the plugin finds it:
+_TIMER_ATTR = '_vitraj_os_test_timer'
 
 def _state_path():
 	return os.environ.get(
@@ -81,7 +82,7 @@ def _headers(model, view):
 
 def _rows(model, view):
 	origin = view.viewport().mapToGlobal(QPoint(0, 0))
-	selection = view.selectionModel()
+	current = view.currentIndex().row()
 	result = []
 	for row in range(model.rowCount()):
 		index = model.index(row, 0)
@@ -89,7 +90,8 @@ def _rows(model, view):
 		result.append({
 			'row': row,
 			'name': '' if name is None else str(name),
-			'selected': selection.isSelected(index),
+			# A plain click moves the cursor. It does not select the row.
+			'current': row == current,
 			'rect': [
 				origin.x(), origin.y() + view.rowViewportPosition(row),
 				view.viewport().width(), view.rowHeight(row)
@@ -122,15 +124,6 @@ def _popups(main_window):
 				result.append(_popup(widget))
 	return result
 
-def _is_active(pane):
-	focus = QApplication.focusWidget()
-	widget = getattr(pane, '_widget', None)
-	while focus is not None:
-		if focus is widget:
-			return True
-		focus = focus.parentWidget()
-	return False
-
 def _write_state():
 	from vitraj.impl.application_context import get_application_context
 	context = get_application_context()
@@ -139,11 +132,11 @@ def _write_state():
 	for index, pane in enumerate(context.window.get_panes()):
 		state = _pane_state(pane, index)
 		if state is not None:
-			state['active'] = _is_active(pane)
 			panes.append(state)
 	state = {
 		'pid': os.getpid(),
 		'time': time.time(),
+		'double_click_ms': QApplication.doubleClickInterval(),
 		'panes': panes,
 		'popups': _popups(main_window),
 	}
@@ -154,8 +147,6 @@ def _write_state():
 	os.replace(tmp, path)
 
 def _tick():
-	if QThread.currentThread() is not QApplication.instance().thread():
-		return
 	try:
 		_write_state()
 	except Exception as e:
@@ -165,13 +156,19 @@ def _tick():
 		os.replace(path + '.tmp', path)
 
 def _start():
-	global _timer
-	if _timer is not None:
+	# Plugin listeners are made on the main thread, so the timer fires there.
+	app = QApplication.instance()
+	old_timer, old_tick = getattr(app, _TIMER_ATTR, (None, None))
+	if old_tick is _tick:
 		return
-	_timer = QTimer()
-	_timer.setInterval(_INTERVAL_MS)
-	_timer.timeout.connect(_tick)
-	_timer.start()
+	if old_timer is not None:
+		# A reload of the plugin imported this module again.
+		old_timer.stop()
+	timer = QTimer(app)
+	timer.setInterval(_INTERVAL_MS)
+	timer.timeout.connect(_tick)
+	timer.start()
+	setattr(app, _TIMER_ATTR, (timer, _tick))
 
 class SortProbeListener(DirectoryPaneListener):
 	def __init__(self, *args, **kwargs):

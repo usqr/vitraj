@@ -16,10 +16,14 @@ sorting by a click on a header, or the `..` entry.
 | `click_test.py` | The driver. It needs `pyobjc-framework-Quartz`. |
 | `SortProbe/` | A probe plugin. It writes the window layout to a JSON file every 200 ms. |
 | `requirements.txt` | The dependency of the driver. |
+| `test_click_test.py` | Unit tests for the helpers of the driver. They need no GUI. |
 
-The probe plugin writes only the layout of the window: the panes, the folder
-URLs, the header and row rectangles, and the open popups. It writes no file
-contents. Do not install it for normal use.
+The probe plugin writes the layout of the window: the panes, the folder URLs,
+the header and row rectangles, the open popups, and the double-click time of
+the app. It writes no file contents. But it writes the name of each file in the
+two panes and all popup texts. The text of the license splash screen can
+contain the email address of the user. Thus do not install the plugin for
+normal use, and do not share the state file.
 
 ## Steps
 
@@ -36,7 +40,12 @@ SCRATCH=$(mktemp -d)
 PLUGINS="$SCRATCH/home/Library/Application Support/vitraj/Plugins/Third-party"
 mkdir -p "$PLUGINS"
 cp -r tools/os_test/SortProbe "$PLUGINS/"
+mkdir "$SCRATCH/home/alpha" "$SCRATCH/home/beta" "$SCRATCH/home/zeta"
+touch "$SCRATCH/home/a.txt" "$SCRATCH/home/m.txt" "$SCRATCH/home/z.txt"
 ```
+
+The test folders and files are necessary. Without them, a click on the Name
+header does not change the row order.
 
 ### 3. Start the copy, not `/Applications/vitraj.app`
 
@@ -58,7 +67,8 @@ Add `--dry-run` to print the click points and to click nothing. Add
 
 ## What the driver does
 
-1. It waits for the state file (maximum `--wait` seconds, default 120).
+1. It waits for the state file (maximum `--wait` seconds, default 120). A state
+   file with a probe error stops the driver.
 2. It makes sure that the process name contains `vitraj` (frozen app) or
    `python` (source run).
 3. It closes the popups:
@@ -67,10 +77,30 @@ Add `--dry-run` to print the click points and to click nothing. Add
    - The alert with "extra configuration": "Cancel".
    - Other popups: the driver stops with an error.
 4. It clicks the Name header `--clicks` times in each pane.
-5. It clicks the `..` row in each pane.
-6. After each click, it waits for a new state. It then checks the pane URLs.
-   A click on a header can change the sort order. A click on a row can change
-   the selection. Neither click can change the folder.
+5. It clicks the `..` row in each pane. If a pane has no visible `..` row, the
+   driver stops. It does not click another row, because that row can be a
+   folder.
+6. After each click, it waits for a state that the probe wrote at least 0.6 s
+   after the click. It also waits for the result of the click:
+   - After a popup button: the popup is closed.
+   - After a header: no special result. If the row order does not change, the
+     driver writes a warning.
+   - After the `..` row: the cursor is on the `..` row. A plain click moves the
+     cursor. It does not select the row.
+
+   If the result does not occur in 20 s, the driver stops. It never clicks
+   again at the position of an old state.
+7. After each click, it makes sure that no pane changed its folder.
+
+Before each click, the driver makes sure that the frontmost window at the click
+point belongs to vitraj. All window layers count, because a system dialog or a
+notification can be above vitraj.
+
+The driver never makes two clicks near the same point within 1.5 times the
+double-click time of the app. Two such clicks on a folder open the folder.
+
+The report file (`--report`) contains the steps, each click with its time and
+position, and the double-click time.
 
 The driver never clicks "OK". On the configuration alert, OK opens a browser.
 
@@ -79,13 +109,21 @@ The driver never clicks "OK". On the configuration alert, OK opens a browser.
 - macOS only.
 - The terminal needs an Accessibility permission. Without it, the CGEvent
   calls do nothing.
-- The Qt coordinates and the CGEvent coordinates are equal on the primary
-  screen. Put the vitraj window on the primary screen.
+- The Qt coordinates and the CGEvent coordinates are in points, with the origin
+  at the top left of the primary screen. Retina scaling does not change them.
+  The test was done only with the window on the primary screen.
 - The `SplashScreen` path occurs only in an unlicensed or expired run.
 - A real run of the click test is necessary after a change to the probe plugin
   or to the popup texts.
 
 ## Known issue
 
-In one run, the left pane opened the empty folder `zeta` while the popups
-closed. It did not occur again in 3 runs. The driver stops on such a change.
+In one run of an earlier version of the driver, the left pane opened the empty
+folder `zeta` while the popups closed. It did not occur again in 3 runs. The
+probable cause: the earlier driver did not wait for a new state after a click.
+After the click on "No", it read the old state and clicked the old "No"
+position again. The file list was below this position after the overlay
+closed. Two such clicks within the double-click time open a folder. The current
+driver waits for a new state and keeps the double-click time between clicks.
+A real run did not prove this cause yet. The report file has the click times
+for this purpose.
