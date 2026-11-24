@@ -28,6 +28,9 @@ class SetLocationTest(TestCase):
 		self.fs.add_child('stub://', self.stub)
 		self.model = SortedFileSystemModel(None, self.fs, 'null://')
 	def tearDown(self):
+		# Let queued resolver tasks finish first. They can wait for the main
+		# thread (run_in_main_thread), so a join without this could hang:
+		_wait_until(lambda: not self.model._resolver._queue.unfinished_tasks)
 		self.model.sourceModel().shutdown()
 		self.model._resolver.shutdown()
 	def test_resolves_outside_main_thread(self):
@@ -70,6 +73,20 @@ class SetLocationTest(TestCase):
 		self.model.set_location('stub://')
 		QTest.qWait(200)
 		self.assertEqual('stub://', self.model.get_location())
+	def test_parent_error_goes_up(self):
+		self.assertEqual(
+			'stub://a', self.model._on_parent_error(PermissionError(), 'stub://a/b')
+		)
+	def test_parent_error_at_root_goes_to_null(self):
+		self.assertEqual(
+			'null://', self.model._on_parent_error(OSError(), 'stub://')
+		)
+	def test_parent_error_other_raises(self):
+		with self.assertRaises(ValueError):
+			try:
+				raise ValueError()
+			except ValueError as e:
+				self.model._on_parent_error(e, 'stub://a')
 	def _capture_excepthook(self):
 		reported = []
 		excepthook_before = sys.excepthook

@@ -9,6 +9,8 @@ from vitraj.impl.util.url import is_pardir
 from vitraj.url import dirname, splitscheme
 from PyQt5.QtCore import pyqtSignal, QSortFilterProxyModel, Qt
 
+from threading import Lock
+
 import errno
 import sip
 import sys
@@ -30,6 +32,7 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		self._already_visited = set()
 		self._num_rows_to_preload = 0
 		self._location_request = 0
+		self._location_request_lock = Lock()
 		self._resolver = Worker()
 		self._resolver.start()
 		# Synchronous, so that there always is a source model:
@@ -52,19 +55,27 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 			callback = lambda: None
 		if onerror is None:
 			onerror = _reraise
-		self._location_request += 1
+		# set_path(...) can run in any thread. So count under a lock:
+		with self._location_request_lock:
+			self._location_request += 1
+			request_id = self._location_request
 		request = _LocationRequest(
-			self._location_request, sort_column, ascending, callback, onerror
+			request_id, sort_column, ascending, callback, onerror
 		)
 		self._resolve_async(request, url)
 	def _resolve_async(self, request, url):
 		def task():
 			try:
-				resolved = self._resolve(url, request.sort_column)
-			except Exception as e:
-				self._on_resolve_error(request, e, url)
-			else:
-				self._on_resolved(request, *resolved)
+				try:
+					resolved = self._resolve(url, request.sort_column)
+				except Exception as e:
+					self._on_resolve_error(request, e, url)
+				else:
+					self._on_resolved(request, *resolved)
+			except SystemExit:
+				# run_in_main_thread raises this when the app quits. Then the
+				# location change does not matter any more.
+				pass
 		self._resolver.submit(1, task)
 	@run_in_main_thread
 	def _on_resolve_error(self, request, e, url):

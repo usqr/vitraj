@@ -11,10 +11,12 @@ import sys
 
 _LOG = logging.getLogger(__name__)
 
-# File types whose icon can differ from file to file:
+# File types whose icon can differ from file to file. A regular file of
+# another type with a custom icon (for example set in the macOS Finder)
+# shows the shared icon of its extension. This is a known limit.
 _PER_FILE_ICON_SUFFIXES = {
 	'.exe', '.lnk', '.ico', '.icns', '.url', '.msi', '.scr', '.cur', '.ani',
-	'.appref-ms', '.desktop', '.app',
+	'.appref-ms', '.desktop', '.app', '.dmg', '.webloc', '.alias',
 }
 
 class IconProvider:

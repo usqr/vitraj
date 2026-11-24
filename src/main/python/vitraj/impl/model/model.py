@@ -411,11 +411,16 @@ class Model(SortFilterTableModel, DragAndDrop):
 		# @transaction here: it skips all work once self._shutdown is set.
 		self._worker.submit(1, self._shutdown_async)
 	def _shutdown_async(self):
-		self._file_watcher.shutdown()
-		# Free the cached file data of this location. A later visit reloads it
-		# anyway (see SortedFileSystemModel#_set_location):
-		self._fs.clear_cache(self._location)
-		self._worker.shutdown()
+		try:
+			self._file_watcher.shutdown()
+			# Free the cached file data of this location. A later visit
+			# reloads it anyway (see SortedFileSystemModel#_show). If another
+			# pane shows this location, it only computes its data again:
+			self._fs.clear_cache(self._location)
+		finally:
+			# For example, clear_cache(...) raises FileNotFoundError when the
+			# plugin of the location's scheme was unloaded. Stop anyway:
+			self._worker.shutdown()
 
 _NOT_LOADED = object()
 

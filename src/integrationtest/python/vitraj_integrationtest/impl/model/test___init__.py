@@ -28,6 +28,29 @@ class SortedFileSystemModelAT: # Instantiated in vitraj_integrationtest.test_qt
 		self._wait_for(inited)
 		self.assertEqual('stub://', self._model.get_location())
 		self._expect_column_headers(['Name', 'Size'])
+		self.assertEqual(
+			(self._name_column, self._size_column), self._model.get_columns()
+		)
+		self.assertEqual(
+			['dir'] + [str(i) for i in range(self._NUM_FILES)],
+			self._get_first_column(),
+			'Should load at least the first column'
+		)
+		self._load_visible_rows()
+		rows = self._get_data()[:self._NUM_VISIBLE_ROWS]
+		icons = self._get_data(DecorationRole)[:self._NUM_VISIBLE_ROWS]
+		self.assertEqual(('dir', ''), rows[0])
+		self.assertEqual((self._folder_icon, None), icons[0])
+		self.assertEqual(
+			[
+				(str(i), '%d B' % self._files[str(i)]['size'])
+				for i in range(self._NUM_VISIBLE_ROWS - 1)
+			],
+			rows[1:]
+		)
+		self.assertEqual(
+			[(self._file_icon, None)] * (self._NUM_VISIBLE_ROWS - 1), icons[1:]
+		)
 	def test_set_location_error_goes_to_onerror_in_main_thread(self):
 		calls = []
 		done = Event()
@@ -71,29 +94,6 @@ class SortedFileSystemModelAT: # Instantiated in vitraj_integrationtest.test_qt
 		finally:
 			sys.excepthook = excepthook_before
 		self.assertEqual([FileNotFoundError], reported)
-		self.assertEqual(
-			(self._name_column, self._size_column), self._model.get_columns()
-		)
-		self.assertEqual(
-			['dir'] + [str(i) for i in range(self._NUM_FILES)],
-			self._get_first_column(),
-			'Should load at least the first column'
-		)
-		self._load_visible_rows()
-		rows = self._get_data()[:self._NUM_VISIBLE_ROWS]
-		icons = self._get_data(DecorationRole)[:self._NUM_VISIBLE_ROWS]
-		self.assertEqual(('dir', ''), rows[0])
-		self.assertEqual((self._folder_icon, None), icons[0])
-		self.assertEqual(
-			[
-				(str(i), '%d B' % self._files[str(i)]['size'])
-				for i in range(self._NUM_VISIBLE_ROWS - 1)
-			],
-			rows[1:]
-		)
-		self.assertEqual(
-			[(self._file_icon, None)] * (self._NUM_VISIBLE_ROWS - 1), icons[1:]
-		)
 	def _load_visible_rows(self):
 		loaded = Event()
 		load_rows = run_in_main_thread(self._model.load_rows)

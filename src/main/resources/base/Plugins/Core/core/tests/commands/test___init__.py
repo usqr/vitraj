@@ -281,3 +281,18 @@ class HistoryTest(TestCase):
 	def _go_to(self, *paths):
 		for path in paths:
 			self._history.path_changed(path)
+
+class IgnoreNotFoundTest(TestCase):
+	def test_not_found_stops(self):
+		from core.commands import _ignore_not_found
+		try:
+			raise FileNotFoundError('x')
+		except FileNotFoundError as e:
+			self.assertIsNone(_ignore_not_found(e, 'file:///x'))
+	def test_other_error_raises(self):
+		from core.commands import _ignore_not_found
+		with self.assertRaises(PermissionError):
+			try:
+				raise PermissionError('x')
+			except PermissionError as e:
+				_ignore_not_found(e, 'file:///x')
