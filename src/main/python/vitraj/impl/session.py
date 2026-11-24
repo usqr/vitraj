@@ -168,6 +168,8 @@ class SessionManager:
 		self._settings['panes'] = \
 			list(map(self._read_pane_settings, main_window.get_panes()))
 		self._settings['fman_version'] = self._fman_version
+		# Earlier versions had a license check and wrote this key:
+		self._settings.pop('is_licensed')
 		try:
 			self._settings.flush()
 		except OSError:
