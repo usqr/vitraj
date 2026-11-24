@@ -9,7 +9,7 @@ def main():
 def profile_main():
 	# Import late to only incur the .0n sec time cost when necessary:
 	import cProfile
-	from fbs_runtime.application_context import is_frozen
+	from vitraj.impl.app_context_base import is_frozen
 	filename = 'fman.profile' if is_frozen() else None
 	cProfile.run('main()', sort='cumtime', filename=filename)
 
