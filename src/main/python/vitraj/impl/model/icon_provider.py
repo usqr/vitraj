@@ -11,12 +11,19 @@ import sys
 
 _LOG = logging.getLogger(__name__)
 
+# File types whose icon can differ from file to file:
+_PER_FILE_ICON_SUFFIXES = {
+	'.exe', '.lnk', '.ico', '.icns', '.url', '.msi', '.scr', '.cur', '.ani',
+	'.appref-ms', '.desktop', '.app',
+}
+
 class IconProvider:
 	def __init__(self, qt_icon_provider, fs, cache_dir):
 		self._qt_icon_provider = qt_icon_provider
 		self._fs = fs
 		self._folder_icon = self._get_qt_icon(cache_dir)
 		self._cache_dir = cache_dir
+		self._local_cache = {}
 		self._cache = {
 			f.suffix: self._get_qt_icon(f)
 			for f in Path(cache_dir).glob('file*')
@@ -24,7 +31,7 @@ class IconProvider:
 	def get_icon(self, url):
 		scheme, path = splitscheme(url)
 		if scheme == 'file://':
-			return self._get_qt_icon(path)
+			return self._get_local_icon(url, path)
 		url = self._fs.resolve(url)
 		scheme, path = splitscheme(url)
 		if scheme == 'file://':
@@ -40,6 +47,31 @@ class IconProvider:
 				f.write('fman')
 			self._cache[suffix] = self._get_qt_icon(surrogate)
 		return self._cache[suffix]
+	def _get_local_icon(self, url, path):
+		"""
+		Share one QIcon for all regular files with the same extension. Qt
+		loads the image of each QIcon lazily, on the main thread, at the
+		first paint. A separate QIcon for each file costs ~0.6 ms on macOS
+		for each new row. Folders, files without an extension and types
+		that can have their own icon (.exe, .lnk, ...) still get one icon
+		for each file.
+		"""
+		suffix = PurePosixPath(path).suffix.lower()
+		if not suffix or suffix in _PER_FILE_ICON_SUFFIXES or \
+			self._is_dir(url):
+			return self._get_qt_icon(path)
+		try:
+			return self._local_cache[suffix]
+		except KeyError:
+			result = self._local_cache[suffix] = self._get_qt_icon(path)
+			return result
+	def _is_dir(self, url):
+		try:
+			return self._fs.is_dir(url)
+		except FileNotFoundError:
+			raise
+		except OSError:
+			return True # Unknown. So do not share the icon.
 	def _get_qt_icon(self, path):
 		if not isinstance(path, str):
 			path = str(path)
