@@ -33,6 +33,13 @@
   (where PyInstaller 6.x sets `sys._MEIPASS`) instead of `Contents/MacOS`.
 - **Escape sequence warning** in `tutorial.py` docstring (`\F` is invalid in Python 3.14+).
 
+### Removed
+
+- **License check**: fman is open source, so vitraj has no license check. The
+  "NOT REGISTERED" window title, the start-up splash screen, the
+  `install_license_key` command, and the `User.json` install prompt are
+  removed. The `rsa` dependency is removed.
+
 ### Changed
 
 - **Upgraded all dependencies** for Python 3.9+ / 3.14 compatibility:
