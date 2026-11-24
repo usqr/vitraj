@@ -18,26 +18,31 @@ def _stub_quartz():
 	quartz = ModuleType('Quartz')
 	for name in (
 		'CGEventCreateMouseEvent', 'CGEventPost', 'kCGHIDEventTap',
-		'CGWindowListCopyWindowInfo', 'kCGWindowListOptionOnScreenOnly',
-		'kCGWindowListExcludeDesktopElements', 'kCGNullWindowID',
 		'kCGEventLeftMouseDown', 'kCGEventLeftMouseUp', 'kCGEventMouseMoved',
 		'kCGMouseButtonLeft'
 	):
 		setattr(quartz, name, 0)
 	return quartz
 
-with patch.dict(sys.modules, {'Quartz': _stub_quartz()}):
+def _stub_application_services():
+	result = ModuleType('ApplicationServices')
+	for name in (
+		'AXUIElementCreateSystemWide', 'AXUIElementCopyElementAtPosition',
+		'AXUIElementGetPid'
+	):
+		setattr(result, name, None)
+	return result
+
+_STUBS = {
+	'Quartz': _stub_quartz(),
+	'ApplicationServices': _stub_application_services()
+}
+with patch.dict(sys.modules, _STUBS):
 	sys.path.insert(0, os.path.dirname(__file__))
 	import click_test as ct
 
 def _button(text, rect=(0, 0, 10, 10)):
 	return {'text': text, 'rect': list(rect)}
-
-def _window(pid, x, y, width, height, alpha=1):
-	return {
-		'kCGWindowOwnerPID': pid, 'kCGWindowAlpha': alpha,
-		'kCGWindowBounds': {'X': x, 'Y': y, 'Width': width, 'Height': height}
-	}
 
 def _row(name, rect=(0, 20, 100, 20)):
 	return {'name': name, 'rect': list(rect)}
@@ -66,18 +71,36 @@ class PopupStepTest(TestCase):
 		popup = {'class': 'QDialog', 'buttons': [_button('OK')]}
 		self.assertEqual((None, None), ct.popup_step(popup))
 
-class FrontmostWindowAtTest(TestCase):
-	def test_returns_the_first_window_that_contains_the_point(self):
-		dialog = _window(99, 50, 50, 100, 100)
-		main = _window(1, 0, 0, 500, 500)
-		self.assertIs(dialog, ct.frontmost_window_at([dialog, main], 60, 60))
-		self.assertIs(main, ct.frontmost_window_at([dialog, main], 10, 10))
-	def test_ignores_transparent_windows(self):
-		invisible = _window(99, 0, 0, 500, 500, alpha=0)
-		main = _window(1, 0, 0, 500, 500)
-		self.assertIs(main, ct.frontmost_window_at([invisible, main], 10, 10))
-	def test_none_outside_of_all_windows(self):
-		self.assertIsNone(ct.frontmost_window_at([_window(1, 0, 0, 5, 5)], 9, 9))
+class PidAtTest(TestCase):
+	def _hit(self, element_error, pid_error=0, pid=42):
+		with patch.object(ct, 'AXUIElementCreateSystemWide', lambda: 'system'), \
+				patch.object(
+					ct, 'AXUIElementCopyElementAtPosition',
+					lambda *_: (element_error, 'element')
+				), \
+				patch.object(ct, 'AXUIElementGetPid', lambda *_: (pid_error, pid)):
+			return ct.pid_at(10, 20)
+	def test_returns_the_pid_of_the_element(self):
+		self.assertEqual(42, self._hit(0))
+	def test_none_if_no_element(self):
+		self.assertIsNone(self._hit(-25204))
+	def test_none_if_no_pid(self):
+		self.assertIsNone(self._hit(0, pid_error=-25202))
+
+class CheckWindowTest(TestCase):
+	def _check(self, owner):
+		clicker = ct.Clicker(7, False, 500, [])
+		with patch.object(ct, 'pid_at', lambda x, y: owner), \
+				patch.object(ct, '_process_name', lambda pid: '/System/Dock'):
+			clicker._check_window(1, 2, 'button')
+	def test_passes_if_vitraj_gets_the_click(self):
+		self._check(7)
+	def test_fails_if_another_app_gets_the_click(self):
+		with self.assertRaisesRegex(ct.Failed, 'goes to Dock'):
+			self._check(99)
+	def test_fails_if_no_app_gets_the_click(self):
+		with self.assertRaises(ct.Failed):
+			self._check(None)
 
 class ParentRowTest(TestCase):
 	def _pane(self, rows):

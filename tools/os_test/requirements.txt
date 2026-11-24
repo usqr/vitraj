@@ -1,1 +1,2 @@
 pyobjc-framework-Quartz>=10
+pyobjc-framework-ApplicationServices>=10
