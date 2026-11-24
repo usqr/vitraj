@@ -27,3 +27,10 @@ class StartOnerrorTest(TestCase):
 	def test_root_fails_stops(self):
 		with self.assertLogs('vitraj.impl.session', 'ERROR'):
 			self.assertIsNone(self.onerror(OSError(), self.root))
+	def test_failing_home_as_start_location_is_reported(self):
+		self.onerror(FileNotFoundError(), 'file:///home')
+		self.assertEqual(['file:///saved'], self.reported)
+	def test_error_is_reported_once(self):
+		self.onerror(PermissionError(), 'file:///saved')
+		self.onerror(FileNotFoundError(), 'file:///home')
+		self.assertEqual(1, len(self.reported))

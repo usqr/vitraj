@@ -25,8 +25,9 @@ def transaction(priority, synchronous=False):
 				def task():
 					f(self, *args, **kwargs)
 					has_run.set()
-				self._worker.submit(priority, task)
-				has_run.wait()
+				# The worker drops the task if it shut down in the meantime:
+				if self._worker.submit(priority, task):
+					has_run.wait()
 			else:
 				self._worker.submit(priority, f, self, *args, **kwargs)
 		return result

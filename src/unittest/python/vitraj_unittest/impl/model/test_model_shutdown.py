@@ -1,8 +1,14 @@
 from vitraj.impl.model.model import Model
 from vitraj.fs import Column
+from PyQt5.QtWidgets import QApplication
 from unittest import TestCase
 
+from time import sleep
+
 import sys
+
+# is_in_main_thread() needs a QApplication:
+_app = QApplication.instance() or QApplication([])
 
 class ModelShutdownTest(TestCase):
 	def test_shutdown_clears_cache_of_location(self):
@@ -62,3 +68,27 @@ class WorkerShutdownFromOwnThreadTest(TestCase):
 			sys.excepthook = excepthook_before
 		self.assertFalse(worker._thread.is_alive())
 		self.assertEqual([], errors)
+
+class SynchronousCallDuringShutdownTest(TestCase):
+	def test_caller_does_not_wait_forever(self):
+		# A file watcher thread calls a synchronous @transaction while the
+		# worker is busy. Then the model shuts down. The caller must return.
+		from threading import Event, Thread
+		fs = _SpyFileSystem()
+		model = Model(fs, 'stub://dir', [Column()])
+		model._worker.start()
+		release = Event()
+		model._worker.submit(1, release.wait)
+		caller = Thread(
+			target=model.notify_file_added, args=('stub://dir/x',), daemon=True
+		)
+		caller.start()
+		# Wait until the caller's task is in the queue (the worker is busy):
+		for _ in range(500):
+			if model._worker._queue.qsize():
+				break
+			sleep(.01)
+		model.shutdown()
+		release.set()
+		caller.join(5)
+		self.assertFalse(caller.is_alive())

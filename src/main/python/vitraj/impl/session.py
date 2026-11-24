@@ -156,7 +156,11 @@ class SessionManager:
 		directory, then the root of the drive of sys.executable.
 		"""
 		root = as_url(Path(sys.executable).anchor)
+		reported = []
 		def onerror(e, failed_url):
+			if not reported:
+				reported.append(True)
+				self._report_load_error(cmdline, url)
 			if failed_url == root:
 				_LOG.error('Could not open %s.', root, exc_info=e)
 				return None
@@ -166,7 +170,6 @@ class SessionManager:
 				#  2) The home directory doesn't exist.
 				# Some research showed that 1) is surprisingly common.
 				return root
-			self._report_load_error(cmdline, url)
 			return home_dir
 		return onerror
 	def _exists_and_is_dir(self, url):
