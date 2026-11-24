@@ -13,6 +13,8 @@ from PyQt5.QtGui import QIcon, QPixmap
 from threading import Event
 from time import time
 
+import sys
+
 def transaction(priority, synchronous=False):
 	def decorator(f):
 		@wraps(f)
@@ -23,8 +25,11 @@ def transaction(priority, synchronous=False):
 				assert not is_in_main_thread()
 				has_run = Event()
 				def task():
-					f(self, *args, **kwargs)
-					has_run.set()
+					try:
+						f(self, *args, **kwargs)
+					finally:
+						# Also on an error. Else the caller waits forever:
+						has_run.set()
 				# The worker drops the task if it shut down in the meantime:
 				if self._worker.submit(priority, task):
 					has_run.wait()
@@ -410,7 +415,10 @@ class Model(SortFilterTableModel, DragAndDrop):
 		# main thread, we also don't want to call #shutdown() from it to avoid
 		# potential deadlocks. So do it asynchronously. Do not use
 		# @transaction here: it skips all work once self._shutdown is set.
-		self._worker.submit(1, self._shutdown_async)
+		# Run after all queued transactions. They see self._shutdown and
+		# return. So a stale task (for example reload) cannot fill the cache
+		# again after _shutdown_async cleared it:
+		self._worker.submit(_SHUTDOWN_PRIORITY, self._shutdown_async)
 	def _shutdown_async(self):
 		try:
 			self._file_watcher.shutdown()
@@ -424,6 +432,9 @@ class Model(SortFilterTableModel, DragAndDrop):
 			self._worker.shutdown()
 
 _NOT_LOADED = object()
+
+# After all @transaction priorities, before the stop marker of the Worker:
+_SHUTDOWN_PRIORITY = sys.maxsize - 1
 
 def _is_parent_entry(row):
 	return row.key.endswith('/..')

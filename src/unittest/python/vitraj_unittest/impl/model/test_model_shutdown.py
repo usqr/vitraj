@@ -92,3 +92,53 @@ class SynchronousCallDuringShutdownTest(TestCase):
 		release.set()
 		caller.join(5)
 		self.assertFalse(caller.is_alive())
+
+class SynchronousTaskErrorTest(TestCase):
+	def test_caller_returns_when_task_raises(self):
+		from threading import Thread
+		fs = _SpyFileSystem()
+		def clear_cache(url):
+			raise FileNotFoundError(url)
+		fs.clear_cache = clear_cache
+		model = Model(fs, 'stub://dir', [Column()])
+		model._worker.start()
+		excepthook_before = sys.excepthook
+		sys.excepthook = lambda *args: None
+		try:
+			caller = Thread(
+				target=model.notify_file_removed, args=('stub://dir/x',),
+				daemon=True
+			)
+			caller.start()
+			caller.join(5)
+		finally:
+			sys.excepthook = excepthook_before
+		self.assertFalse(caller.is_alive())
+		fs.clear_cache = lambda url: None
+		model.shutdown()
+
+class ShutdownOrderTest(TestCase):
+	def test_queued_tasks_run_before_cache_clear(self):
+		from threading import Event
+		order = []
+		fs = _SpyFileSystem()
+		fs.clear_cache = lambda url: order.append('clear')
+		model = Model(fs, 'stub://dir', [Column()])
+		model._worker.start()
+		release = Event()
+		model._worker.submit(1, release.wait)
+		model._worker.submit(5, lambda: order.append('task'))
+		model.shutdown()
+		release.set()
+		model._worker._thread.join(5)
+		self.assertEqual(['task', 'clear'], order)
+
+class WorkerKwargsTest(TestCase):
+	def test_kwargs_reach_function(self):
+		from vitraj.impl.model.worker import Worker
+		got = []
+		worker = Worker()
+		worker.start()
+		worker.submit(1, lambda a, b=None: got.append((a, b)), 1, b=2)
+		worker.shutdown()
+		self.assertEqual([(1, 2)], got)

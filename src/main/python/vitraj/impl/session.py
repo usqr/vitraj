@@ -110,6 +110,9 @@ class SessionManager:
 		except Exception:
 			self._report_load_error(cmdline, url)
 			location, place_cursor = home_dir, None
+			already_reported = True
+		else:
+			already_reported = False
 		def callback(pane=pane):
 			if place_cursor:
 				place_cursor(pane)
@@ -122,7 +125,9 @@ class SessionManager:
 					# This for instance happens when the old and new numbers of
 					# columns don't match (eg. 2 columns before, 3 now).
 					pass
-		onerror = self._get_start_onerror(cmdline, url, home_dir)
+		onerror = self._get_start_onerror(
+			cmdline, url, home_dir, already_reported
+		)
 		pane.set_path(location, callback, onerror)
 		if gallery_tile_size:
 			try:
@@ -150,13 +155,13 @@ class SessionManager:
 	def _report_load_error(self, cmdline, url):
 		msg = 'Could not load folder %s.' % (cmdline or as_human_readable(url))
 		self._error_handler.report(msg, exc=False)
-	def _get_start_onerror(self, cmdline, url, home_dir):
+	def _get_start_onerror(self, cmdline, url, home_dir, already_reported=False):
 		"""
 		An onerror for set_path(...): report the error, then try the home
 		directory, then the root of the drive of sys.executable.
 		"""
 		root = as_url(Path(sys.executable).anchor)
-		reported = []
+		reported = [True] if already_reported else []
 		def onerror(e, failed_url):
 			if not reported:
 				reported.append(True)

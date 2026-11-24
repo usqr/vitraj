@@ -34,3 +34,12 @@ class StartOnerrorTest(TestCase):
 		self.onerror(PermissionError(), 'file:///saved')
 		self.onerror(FileNotFoundError(), 'file:///home')
 		self.assertEqual(1, len(self.reported))
+	def test_already_reported_error_is_not_reported_again(self):
+		manager = SessionManager.__new__(SessionManager)
+		manager._report_load_error = lambda cmdline, url: \
+			self.reported.append(url)
+		onerror = manager._get_start_onerror(
+			None, 'file:///saved', 'file:///home', already_reported=True
+		)
+		onerror(FileNotFoundError(), 'file:///home')
+		self.assertEqual([], self.reported)

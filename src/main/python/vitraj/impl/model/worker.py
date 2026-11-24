@@ -21,7 +21,7 @@ class Worker:
 		with self._shutdown_lock:
 			if self._shutdown:
 				return False
-			self._queue.put(WorkItem(priority, fn, *args, *kwargs))
+			self._queue.put(WorkItem(priority, fn, *args, **kwargs))
 			return True
 	def shutdown(self):
 		with self._shutdown_lock:
