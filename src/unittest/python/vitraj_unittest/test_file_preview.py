@@ -217,24 +217,52 @@ class RenderPdfTest(TestCase):
 		self.assertFalse(result.image.isNull())
 		self.assertEqual('doc.pdf (2 pages)', result.header)
 
-class ShowPreviewInMainThreadTest(TestCase):
-	def test_runs_in_main_thread(self):
-		from file_preview import _show_preview_in_main_thread
+class UpdatePreviewTest(TestCase):
+	def test_reads_cursor_in_main_thread(self):
+		from file_preview import _update_preview
 		from threading import Thread
-		from vitraj.impl.util.qt.thread import is_in_main_thread
 		calls = []
-		class Spy:
-			def show_preview(self, url):
-				calls.append((url, is_in_main_thread()))
 		Thread(
-			target=_show_preview_in_main_thread, args=(Spy(), 'u'),
-			daemon=True
+			target=_update_preview, args=(_SpyPane(calls),), daemon=True
 		).start()
 		self.assertTrue(_wait_until(lambda: calls))
-		self.assertEqual([('u', True)], calls)
+		self.assertEqual([('cursor-url', True, True)], calls)
+	def test_no_active_preview_does_nothing(self):
+		from file_preview import _update_preview
+		calls = []
+		_update_preview(_SpyPane(calls, panel_id='settings'))
+		self.assertEqual([], calls)
 	def test_deleted_widget_is_ignored(self):
-		from file_preview import _show_preview_in_main_thread
-		class Deleted:
+		from file_preview import _update_preview
+		_update_preview(_SpyPane([], deleted=True))
+
+class _SpyPane:
+	def __init__(self, calls, panel_id='preview', deleted=False):
+		from vitraj.impl.util.qt.thread import is_in_main_thread
+		pane = self
+		self._cursor_read_in_main = None
+		class Widget:
 			def show_preview(self, url):
-				raise RuntimeError('wrapped C/C++ object has been deleted')
-		_show_preview_in_main_thread(Deleted(), 'u')
+				if deleted:
+					raise RuntimeError('wrapped C/C++ object has been deleted')
+				calls.append((url, is_in_main_thread(), pane._cursor_read_in_main))
+		class Window:
+			def get_active_panel(self, p):
+				return panel_id, Widget()
+		self.window = Window()
+		self._is_in_main_thread = is_in_main_thread
+	def get_file_under_cursor(self):
+		self._cursor_read_in_main = self._is_in_main_thread()
+		return 'cursor-url'
+
+class RunnerDeletedTest(TestCase):
+	def test_result_after_delete_is_dropped(self):
+		import sip
+		release = Event()
+		results = []
+		runner = AsyncRunner()
+		runner.run(release.wait, results.append)
+		sip.delete(runner)
+		release.set()
+		QTest.qWait(100)
+		self.assertEqual([], results)
