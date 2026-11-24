@@ -1,6 +1,7 @@
 from core.commands import *
 from core.fs import *
 from datetime import datetime
+from functools import lru_cache
 from vitraj.fs import Column
 from vitraj.url import basename
 from math import log
@@ -85,6 +86,18 @@ class Size(Column):
 		return self._fs.query(url, 'size_bytes')
 
 # Define here so get_default_columns(...) can reference it as core.Modified:
+@lru_cache(maxsize=4)
+def _short_time_format(locale_name):
+	"""
+	QLocale#dateTimeFormat(...) takes ~50us. That is ~40% of the load time of
+	a large directory when we call it for each file. So cache the result. The
+	key is the locale name, so a change of the default locale gives a new
+	format.
+	"""
+	result = QLocale(locale_name).dateTimeFormat(QLocale.ShortFormat)
+	# Always show two-digit years, not four digits:
+	return result.replace('yyyy', 'yy')
+
 class Modified(Column):
 	def __init__(self, fs=vitraj.fs):
 		super().__init__()
@@ -104,10 +117,7 @@ class Modified(Column):
 			# This raises `OSError: [Errno 22] Invalid argument`.
 			return ''
 		mtime_qt = QDateTime.fromMSecsSinceEpoch(int(timestamp * 1000))
-		time_format = QLocale().dateTimeFormat(QLocale.ShortFormat)
-		# Always show two-digit years, not four digits:
-		time_format = time_format.replace('yyyy', 'yy')
-		return mtime_qt.toString(time_format)
+		return mtime_qt.toString(_short_time_format(QLocale().name()))
 	def get_sort_value(self, url, is_ascending):
 		try:
 			is_dir = self._fs.is_dir(url)
