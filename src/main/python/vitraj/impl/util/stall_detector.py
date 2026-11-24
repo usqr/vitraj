@@ -4,8 +4,8 @@ longer than a threshold. It is off by default. To turn it on, set the
 environment variable VITRAJ_STALL_MS, for example VITRAJ_STALL_MS=100.
 """
 from PyQt5.QtCore import QTimer
-from threading import Event, Thread, get_ident
-from time import monotonic
+from threading import Thread, get_ident
+from time import monotonic, sleep
 
 import logging
 import os
@@ -60,7 +60,6 @@ class StallDetector:
 		self._interval_s = threshold_ms / 4000
 		self._log = log
 		self._main_thread_id = get_ident()
-		self._stop = Event()
 		self._timer = None
 	def start(self):
 		"""Call this from the main thread, after the QApplication exists."""
@@ -68,10 +67,9 @@ class StallDetector:
 		self._timer.timeout.connect(self._tracker.heartbeat)
 		self._timer.start(max(1, int(self._interval_s * 1000)))
 		Thread(target=self._watch, daemon=True, name='StallDetector').start()
-	def stop(self):
-		self._stop.set()
 	def _watch(self):
-		while not self._stop.wait(self._interval_s):
+		while True:
+			sleep(self._interval_s)
 			duration = self._tracker.check()
 			if duration is not None:
 				self._log.warning(

@@ -1,4 +1,5 @@
 from core import Name, Size, Modified, _short_time_format
+from PyQt5.QtCore import QLocale
 from core.tests import StubFS
 from core.tests.fs import StubFileSystem
 from vitraj.url import as_url
@@ -107,10 +108,12 @@ class ModifiedTest(ColumnTest, TestCase):
 		self.assert_is_less('a', 'b', False)
 	def test_directories_before_files(self):
 		self.check_less_than_chain('a_dir', 'b_dir', 'a')
-	def test_short_time_format_has_two_digit_year(self):
-		self.assertNotIn('yyyy', _short_time_format('de_DE'))
-		self.assertIn('yy', _short_time_format('de_DE'))
-	def test_short_time_format_depends_on_locale(self):
-		self.assertNotEqual(
-			_short_time_format('en_US'), _short_time_format('de_DE')
+	def test_short_time_format_uses_system_locale(self):
+		# QLocale() includes OS overrides (for example a 24-hour clock).
+		# QLocale(QLocale().name()) does not, so it must not be used:
+		expected = QLocale().dateTimeFormat(QLocale.ShortFormat)
+		self.assertEqual(
+			expected.replace('yyyy', 'yy'), _short_time_format()
 		)
+	def test_short_time_format_has_two_digit_year(self):
+		self.assertNotIn('yyyy', _short_time_format())

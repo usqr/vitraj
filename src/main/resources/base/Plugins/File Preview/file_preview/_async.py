@@ -47,8 +47,8 @@ class AsyncRunner(QObject):
 
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		self._pool = QThreadPool(self)
-		self._pool.setMaxThreadCount(1)
+		self._pool = _shared_pool()
+		self._job = None
 		self._token = 0
 		self._callback = None
 		self._done.connect(self._on_done)
@@ -60,10 +60,20 @@ class AsyncRunner(QObject):
 		self.cancel()
 		token = self._token
 		self._callback = on_result
-		self._pool.start(_Job(fn, lambda result: self._emit(token, result)))
+		self._job = _Job(fn, lambda result: self._emit(token, result))
+		self._pool.start(self._job)
 	def cancel(self):
 		self._token += 1
 		self._callback = None
+		if self._job is not None:
+			# Remove the job if it did not start yet. A stale job that already
+			# runs finishes, and #_on_done drops its result:
+			try:
+				self._pool.tryTake(self._job)
+			except RuntimeError:
+				# The job finished and Qt deleted it (autoDelete).
+				pass
+			self._job = None
 	def wait(self, msecs=-1):
 		return self._pool.waitForDone(msecs)
 	def _emit(self, token, result):
@@ -77,6 +87,20 @@ class AsyncRunner(QObject):
 			return
 		callback, self._callback = self._callback, None
 		callback(result)
+
+_POOL = None
+
+def _shared_pool():
+	"""
+	One worker thread for all previews. The pool has no parent and lives
+	until the app exits. So when Qt deletes a preview widget, it does not
+	wait (on the main thread) for a running job.
+	"""
+	global _POOL
+	if _POOL is None:
+		_POOL = QThreadPool()
+		_POOL.setMaxThreadCount(1)
+	return _POOL
 
 class _Job(QRunnable):
 	def __init__(self, fn, report):

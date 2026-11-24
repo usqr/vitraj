@@ -3,6 +3,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase, skipIf
 
+from threading import Event
+from time import sleep
+
 import sys
 
 _PLUGINS = join(
@@ -17,8 +20,8 @@ from PyQt5.QtGui import QImage # noqa: E402
 from PyQt5.QtTest import QTest # noqa: E402
 from PyQt5.QtWidgets import QApplication # noqa: E402
 
-from file_preview import PreviewWidget, _directory_info, _load_qt_image, \
-	_LOADING_DELAY_MS # noqa: E402
+from file_preview import PreviewWidget, PreviewImage, _directory_info, \
+	_load_qt_image, _LOADING_DELAY_MS # noqa: E402
 from file_preview._async import AsyncRunner, Debouncer # noqa: E402
 from vitraj.url import as_url # noqa: E402
 
@@ -76,6 +79,22 @@ class AsyncRunnerTest(TestCase):
 		self.assertTrue(_wait_until(lambda: self.results))
 		QTest.qWait(30)
 		self.assertEqual(['new'], self.results)
+	def test_cancel_after_finished_job(self):
+		self.runner.run(lambda: 1, self.results.append)
+		self.assertTrue(_wait_until(lambda: self.results))
+		self.runner.wait()
+		self.runner.cancel()
+	def test_cancel_removes_queued_job(self):
+		release = Event()
+		ran = []
+		self.runner.run(release.wait, self.results.append)
+		other = AsyncRunner()
+		other.run(lambda: ran.append('queued'), self.results.append)
+		other.cancel()
+		release.set()
+		self.runner.wait()
+		QTest.qWait(30)
+		self.assertEqual([], ran)
 	def test_cancel_drops_result(self):
 		self.runner.run(lambda: 'x', self.results.append)
 		self.runner.cancel()
@@ -152,6 +171,26 @@ class PreviewWidgetTest(TestCase):
 				self.widget.show_preview(as_url(str(path)))
 			self.assertEqual('content 0', self._text())
 			self.assertTrue(_wait_until(lambda: self._text() == 'content 2'))
+	def test_stale_result_does_not_replace_next_file(self):
+		image = QImage(4, 4, QImage.Format_RGB32)
+		def slow_handler(widget, path):
+			def load():
+				# Shorter than the debounce, so it ends before the next render:
+				sleep(.03)
+				return PreviewImage(image, 'info', 'STALE HEADER')
+			widget.show_image_async(load)
+		PreviewWidget.register_handler('.slow', slow_handler)
+		self.addCleanup(PreviewWidget._preview_handlers.pop, '.slow')
+		with TemporaryDirectory() as tmp_dir:
+			slow = Path(tmp_dir, 'a.slow')
+			slow.write_text('x')
+			text = Path(tmp_dir, 'b.txt')
+			text.write_text('text')
+			self.widget.show_preview(as_url(str(slow)))
+			self.widget.show_preview(as_url(str(text)))
+			QTest.qWait(500)
+		self.assertEqual('b.txt', self.widget._header.text())
+		self.assertEqual('text', self._text())
 	def _image_shown(self):
 		return self.widget._stack.currentIndex() == 1
 	def _text(self):
@@ -159,6 +198,12 @@ class PreviewWidgetTest(TestCase):
 
 @skipIf(file_preview_pdf._load_fitz() is None, 'PyMuPDF is not installed')
 class RenderPdfTest(TestCase):
+	def test_missing_pymupdf_raises_in_worker(self):
+		load_before = file_preview_pdf._load_fitz
+		file_preview_pdf._load_fitz = lambda: None
+		self.addCleanup(setattr, file_preview_pdf, '_load_fitz', load_before)
+		with self.assertRaises(ImportError):
+			file_preview_pdf._render_pdf('/nonexistent.pdf')
 	def test_renders_first_page(self):
 		fitz = file_preview_pdf._load_fitz()
 		with TemporaryDirectory() as tmp_dir:
