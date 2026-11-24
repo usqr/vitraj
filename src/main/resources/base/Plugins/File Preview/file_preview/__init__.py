@@ -1,9 +1,11 @@
 from vitraj import DirectoryPaneCommand, DirectoryPaneListener
 from vitraj.url import splitscheme, basename, as_human_readable
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPixmap, QFont, QImage
+from collections import namedtuple
+from file_preview._async import AsyncRunner, Debouncer
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPixmap, QFont, QImage, QImageReader
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPlainTextEdit, \
-	QStackedWidget, QScrollArea, QSizePolicy
+	QStackedWidget, QScrollArea, QSizePolicy, QApplication
 
 from functools import lru_cache
 
@@ -43,6 +45,18 @@ _IMAGE_EXTENSIONS = {
 _MAX_TEXT_SIZE = 1024 * 1024
 _SNIFF_SIZE = 8192
 _MAX_DIR_ENTRIES = 10000
+# Render the first cursor move at once. Then wait for a pause this long:
+_DEBOUNCE_MS = 80
+# Show "Loading..." only when a preview takes longer than this:
+_LOADING_DELAY_MS = 150
+
+PreviewImage = namedtuple('PreviewImage', ('image', 'info', 'header'))
+PreviewImage.__new__.__defaults__ = (None,)
+PreviewImage.__doc__ = """
+The result of a load function for PreviewWidget#show_image_async(...).
+`image` is a QImage (not a QPixmap: QPixmap is not safe outside the main
+thread). `header`, when not None, replaces the text of the header.
+"""
 
 def _format_size(size):
 	if size < 1024:
@@ -57,6 +71,81 @@ def _format_size(size):
 def _looks_binary(sample):
 	return b'\x00' in sample
 
+def _load_qt_image(path, max_size):
+	"""
+	Decode the image at `path`, scaled down to fit in `max_size`. Return
+	(QImage, original QSize). Safe to call outside the main thread.
+	"""
+	reader = QImageReader(path)
+	original = reader.size()
+	if original.isValid() and (
+		original.width() > max_size.width() or
+		original.height() > max_size.height()
+	):
+		reader.setScaledSize(original.scaled(max_size, Qt.KeepAspectRatio))
+	image = reader.read()
+	if image.isNull():
+		raise ValueError(reader.errorString())
+	if not original.isValid():
+		original = image.size()
+	return image, original
+
+def _load_image(path, ext, max_size):
+	image, original = _load_qt_image(path, max_size)
+	w, h = original.width(), original.height()
+	if ext == '.svg':
+		return PreviewImage(image, 'SVG canvas: %d x %d' % (w, h))
+	size = _file_size(path)
+	return PreviewImage(image, '%d x %d px  |  %s' % (w, h, _format_size(size)))
+
+def _load_pillow_image(pil_image, path, max_size):
+	with pil_image.open(path) as img:
+		w, h = img.width, img.height
+		img.thumbnail((max_size.width(), max_size.height()))
+		rgba = img.convert('RGBA')
+		data = rgba.tobytes('raw', 'RGBA')
+		image = QImage(
+			data, rgba.width, rgba.height, QImage.Format_RGBA8888
+		).copy()
+	info = '%d x %d px  |  %s' % (w, h, _format_size(_file_size(path)))
+	return PreviewImage(image, info)
+
+def _file_size(path):
+	try:
+		return os.path.getsize(path)
+	except OSError:
+		return 0
+
+def _directory_info(path):
+	"""Return a summary of the directory at `path`. Raise OSError on error."""
+	num_files = num_dirs = total_size = 0
+	truncated = False
+	with os.scandir(path) as it:
+		for i, entry in enumerate(it):
+			if i >= _MAX_DIR_ENTRIES:
+				truncated = True
+				break
+			try:
+				if entry.is_dir(follow_symlinks=False):
+					num_dirs += 1
+				else:
+					num_files += 1
+					total_size += entry.stat().st_size
+			except OSError:
+				num_files += 1
+	count_str = '{:,} files, {:,} folders'.format(num_files, num_dirs)
+	if truncated:
+		count_str += ' (first {:,} entries)'.format(_MAX_DIR_ENTRIES)
+	lines = ['Directory\n', count_str]
+	if total_size > 0:
+		lines.append('Size (files only): %s' % _format_size(total_size))
+	return '\n'.join(lines)
+
+def _max_image_size(widget):
+	"""The largest size that is useful for a preview: the screen size."""
+	screen = widget.screen() or QApplication.primaryScreen()
+	return screen.size() * screen.devicePixelRatio()
+
 
 class PreviewWidget(QWidget):
 
@@ -70,6 +159,15 @@ class PreviewWidget(QWidget):
 		super().__init__(parent)
 		self._current_pixmap = None
 		self._last_url = None
+		self._runner = AsyncRunner(self)
+		self._render_debounced = Debouncer(self._render, _DEBOUNCE_MS, self)
+		# A child of this widget, so it stops when the widget is deleted:
+		self._loading_timer = QTimer(self)
+		self._loading_timer.setSingleShot(True)
+		self._loading_timer.setInterval(_LOADING_DELAY_MS)
+		self._loading_timer.timeout.connect(
+			lambda: self._show_message('Loading...')
+		)
 		self._init_ui()
 
 	def _init_ui(self):
@@ -134,32 +232,9 @@ class PreviewWidget(QWidget):
 		if file_url == self._last_url:
 			return
 		self._last_url = file_url
-		if file_url is None:
-			self._show_message('No file selected')
-			return
-		name = basename(file_url)
-		self._header.setText(name)
-		scheme, _ = splitscheme(file_url)
-		if scheme != 'file://':
-			self._show_message('Preview not available for %s' % scheme)
-			return
-		path = as_human_readable(file_url)
-		if os.path.isdir(path):
-			self._show_directory_info(path)
-			return
-		ext = os.path.splitext(name)[1].lower()
-		handler = self._preview_handlers.get(ext)
-		if handler:
-			handler(self, path)
-			return
-		if ext in _IMAGE_EXTENSIONS:
-			self._show_image(path, ext)
-		elif ext == '.avif':
-			self._show_pillow_image(path)
-		elif ext in _TEXT_EXTENSIONS:
-			self._show_text(path)
-		else:
-			self._show_by_sniffing(path)
+		if file_url is not None:
+			self._header.setText(basename(file_url))
+		self._render_debounced(file_url)
 
 	def show_image_pixmap(self, pixmap, info_text):
 		"""Public API for handler plugins to display a pixmap with info."""
@@ -168,7 +243,25 @@ class PreviewWidget(QWidget):
 		self._scale_image()
 		self._stack.setCurrentIndex(1)
 
+	def show_image_async(self, load_fn, error_prefix='Cannot load image'):
+		"""
+		Public API for handler plugins. Call load_fn() in a worker thread. It
+		must return a PreviewImage and must not touch any widget. Then show
+		the image, unless the user moved to another file in the meantime.
+		"""
+		def on_result(result):
+			if isinstance(result, Exception):
+				self._show_message('%s: %s' % (error_prefix, result))
+				return
+			if result.header is not None:
+				self._header.setText(result.header)
+			self.show_image_pixmap(QPixmap.fromImage(result.image), result.info)
+		self._run_async(load_fn, on_result)
+
 	def clear(self):
+		self._render_debounced.cancel()
+		self._runner.cancel()
+		self._loading_timer.stop()
 		self._header.setText('')
 		self._text_view.clear()
 		self._image_label.clear()
@@ -183,6 +276,40 @@ class PreviewWidget(QWidget):
 		if self._current_pixmap and self._stack.currentIndex() == 1:
 			self._scale_image()
 
+	def _render(self, file_url):
+		self._runner.cancel()
+		self._loading_timer.stop()
+		if file_url is None:
+			self._show_message('No file selected')
+			return
+		scheme, _ = splitscheme(file_url)
+		if scheme != 'file://':
+			self._show_message('Preview not available for %s' % scheme)
+			return
+		path = as_human_readable(file_url)
+		if os.path.isdir(path):
+			self._show_directory_info(path)
+			return
+		ext = os.path.splitext(path)[1].lower()
+		handler = self._preview_handlers.get(ext)
+		if handler:
+			handler(self, path)
+		elif ext in _IMAGE_EXTENSIONS:
+			self._show_image(path, ext)
+		elif ext == '.avif':
+			self._show_pillow_image(path)
+		elif ext in _TEXT_EXTENSIONS:
+			self._show_text(path)
+		else:
+			self._show_by_sniffing(path)
+
+	def _run_async(self, fn, on_result):
+		def on_result_wrapper(result):
+			self._loading_timer.stop()
+			on_result(result)
+		self._runner.run(fn, on_result_wrapper)
+		self._loading_timer.start()
+
 	def _show_text(self, path):
 		try:
 			size = os.path.getsize(path)
@@ -196,42 +323,18 @@ class PreviewWidget(QWidget):
 			self._show_message('Cannot read file: %s' % e)
 
 	def _show_pillow_image(self, path):
-		_PIL_Image = _pil_image()
-		if _PIL_Image is None:
+		pil_image = _pil_image()
+		if pil_image is None:
 			self._show_message('AVIF preview requires Pillow.\n\npip install Pillow')
 			return
-		try:
-			with _PIL_Image.open(path) as img:
-				w, h = img.width, img.height
-				file_size = os.fstat(img.fp.fileno()).st_size
-				rgba = img.convert('RGBA')
-				data = rgba.tobytes('raw', 'RGBA')
-			qimg = QImage(data, w, h, QImage.Format_RGBA8888).copy()
-			pixmap = QPixmap.fromImage(qimg)
-			if pixmap.isNull():
-				self._show_message('Cannot load image')
-				return
-			self.show_image_pixmap(
-				pixmap, '%d x %d px  |  %s' % (w, h, _format_size(file_size))
-			)
-		except Exception as e:
-			self._show_message('Cannot load image: %s' % e)
+		max_size = _max_image_size(self)
+		self.show_image_async(
+			lambda: _load_pillow_image(pil_image, path, max_size)
+		)
 
 	def _show_image(self, path, ext=None):
-		pixmap = QPixmap(path)
-		if pixmap.isNull():
-			self._show_message('Cannot load image')
-			return
-		w, h = pixmap.width(), pixmap.height()
-		if ext == '.svg':
-			info = 'SVG canvas: %d x %d' % (w, h)
-		else:
-			try:
-				size = os.path.getsize(path)
-			except OSError:
-				size = 0
-			info = '%d x %d px  |  %s' % (w, h, _format_size(size))
-		self.show_image_pixmap(pixmap, info)
+		max_size = _max_image_size(self)
+		self.show_image_async(lambda: _load_image(path, ext, max_size))
 
 	def _scale_image(self):
 		if not self._current_pixmap:
@@ -274,35 +377,12 @@ class PreviewWidget(QWidget):
 			)
 
 	def _show_directory_info(self, path):
-		num_files = 0
-		num_dirs = 0
-		total_size = 0
-		truncated = False
-		try:
-			with os.scandir(path) as it:
-				for i, entry in enumerate(it):
-					if i >= _MAX_DIR_ENTRIES:
-						truncated = True
-						break
-					try:
-						if entry.is_dir(follow_symlinks=False):
-							num_dirs += 1
-						else:
-							num_files += 1
-							total_size += entry.stat().st_size
-					except OSError:
-						num_files += 1
-		except OSError as e:
-			self._show_message('Cannot read directory: %s' % e)
-			return
-		lines = ['Directory\n']
-		count_str = '{:,} files, {:,} folders'.format(num_files, num_dirs)
-		if truncated:
-			count_str += ' (first {:,} entries)'.format(_MAX_DIR_ENTRIES)
-		lines.append(count_str)
-		if total_size > 0:
-			lines.append('Size (files only): %s' % _format_size(total_size))
-		self._show_message('\n'.join(lines))
+		def on_result(result):
+			if isinstance(result, Exception):
+				self._show_message('Cannot read directory: %s' % result)
+			else:
+				self._show_message(result)
+		self._run_async(lambda: _directory_info(path), on_result)
 
 	def _show_message(self, text):
 		self._current_pixmap = None
