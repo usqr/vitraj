@@ -30,6 +30,7 @@ normal use, and do not share the state file.
 ### 1. Build a copy of the app
 
 ```bash
+source venv/bin/activate   # build.py freeze calls pyinstaller from the PATH
 python build.py freeze
 ```
 
@@ -37,15 +38,21 @@ python build.py freeze
 
 ```bash
 SCRATCH=$(mktemp -d)
-PLUGINS="$SCRATCH/home/Library/Application Support/vitraj/Plugins/Third-party"
-mkdir -p "$PLUGINS"
-cp -r tools/os_test/SortProbe "$PLUGINS/"
+PLUGINS="$SCRATCH/home/Library/Application Support/vitraj/Plugins"
+mkdir -p "$PLUGINS/Third-party" "$PLUGINS/User/Settings"
+cp -r tools/os_test/SortProbe "$PLUGINS/Third-party/"
+echo '[{"show_hidden_files": false, "show_parent_dir_entry": true},
+  {"show_hidden_files": false, "show_parent_dir_entry": true}]' \
+  > "$PLUGINS/User/Settings/Panes (Mac).json"
 mkdir "$SCRATCH/home/alpha" "$SCRATCH/home/beta" "$SCRATCH/home/zeta"
 touch "$SCRATCH/home/a.txt" "$SCRATCH/home/m.txt" "$SCRATCH/home/z.txt"
 ```
 
 The test folders and files are necessary. Without them, a click on the Name
 header does not change the row order.
+
+`Panes (Mac).json` turns on the `..` entry in the two panes. It is off by
+default. Without it, the driver stops at the `..` step.
 
 ### 3. Start the copy, not `/Applications/vitraj.app`
 
@@ -111,7 +118,8 @@ The driver never clicks "OK". On the configuration alert, OK opens a browser.
   calls do nothing.
 - The Qt coordinates and the CGEvent coordinates are in points, with the origin
   at the top left of the primary screen. Retina scaling does not change them.
-  The test was done only with the window on the primary screen.
+  The test passed with the window on the primary screen and on a second
+  screen above and to the right of the primary screen.
 - The `SplashScreen` path occurs only in an unlicensed or expired run.
 - A real run of the click test is necessary after a change to the probe plugin
   or to the popup texts.
@@ -125,5 +133,6 @@ After the click on "No", it read the old state and clicked the old "No"
 position again. The file list was below this position after the overlay
 closed. Two such clicks within the double-click time open a folder. The current
 driver waits for a new state and keeps the double-click time between clicks.
-A real run did not prove this cause yet. The report file has the click times
-for this purpose.
+The current driver passed 4 of 4 real runs on 2026-11-24. This does not prove
+the cause, because the problem occurred in only 1 run of 4 before. The report
+file has the click times for more analysis.
