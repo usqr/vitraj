@@ -204,19 +204,9 @@ def _button(popup, text):
 			return button
 	return None
 
-def _splash_button(popup):
-	match = re.search(r'press button ([A-Z])', _text(popup), re.IGNORECASE)
-	if not match:
-		return None
-	return _button(popup, match.group(1))
-
 def popup_step(popup):
 	"""Return (kind, button) for a known popup, or (None, None)."""
 	name = popup.get('class')
-	if name == 'SplashScreen':
-		button = _splash_button(popup)
-		if button:
-			return 'splash', button
 	if name == 'Overlay' and _button(popup, 'No'):
 		return 'overlay', _button(popup, 'No')
 	if popup.get('message_box') and 'extra configuration' in _text(popup):

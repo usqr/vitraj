@@ -60,13 +60,6 @@ class PopupStepTest(TestCase):
 		kind, button = ct.popup_step(popup)
 		self.assertEqual('configuration alert', kind)
 		self.assertEqual('&Cancel', button['text'])
-	def test_splash_screen_gives_the_named_button(self):
-		popup = {
-			'class': 'SplashScreen',
-			'texts': ['<p>To continue, <b>press button B</b>.</p>'],
-			'buttons': [_button('A'), _button('B'), _button('C')]
-		}
-		self.assertEqual(('splash', _button('B')), ct.popup_step(popup))
 	def test_unknown_popup(self):
 		popup = {'class': 'QDialog', 'buttons': [_button('OK')]}
 		self.assertEqual((None, None), ct.popup_step(popup))
