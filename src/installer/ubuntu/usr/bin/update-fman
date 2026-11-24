@@ -1,4 +1,0 @@
-#!/bin/sh
-set -e
-apt-get update -o Dir::Etc::sourcelist="/etc/apt/sources.list.d/fman.list" -o Dir::Etc::sourceparts="-" -o APT::Get::List-Cleanup="0"
-apt-get install --only-upgrade fman -y

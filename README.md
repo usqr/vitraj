@@ -159,12 +159,10 @@ Both are included in `requirements/base.txt`. The app works without them — pre
 | PyQt5 | 5.15.11 | GUI framework |
 | PyInstaller | 6.19.0 | App freezing/compilation |
 | pyobjc-core | 12.1 | macOS Objective-C bridge |
-| fbs | 0.9.4 | Build system |
 
 See `requirements/` for the full list per platform.| PyMuPDF | 1.27.2.2 | PDF preview (optional) |
 | Pillow | 11.2.1 | AVIF support (optional) |
 | pyobjc-core | 12.1 | macOS Objective-C bridge |
-| fbs | 0.9.4 | [Build system](https://build-system.fman.io/) |
 
 See `requirements/` for the full per-platform list.
 

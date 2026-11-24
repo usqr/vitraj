@@ -3,6 +3,5 @@
 		"ctypes.wintypes", "adodbapi", "win32com.shell.shell",
 		"win32com.shell.shellcon", "win32gui", "winpty", "win32wnet"
 	],
-	"windows_sign_pass": "Tu4suttmdpn",
-	"windows_sign_server": "http://sha256timestamp.ws.symantec.com/sha256/timestamp"
+	"show_console_window": false
 }

@@ -1,52 +1,33 @@
+"""
+vitraj's build commands. Usage: python build.py <command>
+
+PyInstaller makes the app. See src/build/python/build_impl/freeze.py.
+"""
+from argparse import ArgumentParser
 from os.path import dirname, join
+
 import sys
-sys.path.append(join(dirname(__file__), *'src/build/python'.split('/')))
 
-from fbs_runtime.platform import is_windows, is_mac, is_linux, is_ubuntu, \
-	is_fedora, is_arch_linux, linux_distribution
-from os.path import dirname
+_PROJECT_DIR = dirname(__file__) or '.'
+sys.path[:0] = [
+	join(_PROJECT_DIR, 'src', 'build', 'python'),
+	join(_PROJECT_DIR, 'src', 'main', 'python')
+]
 
-import fbs.builtin_commands
-import fbs.cmdline
+from build_impl import commands # noqa: E402 (needs the sys.path above)
 
-# Import fbs's built-in commands first (above). The imports below then
-# replace some of them (for example freeze) with vitraj's own versions.
-# The other order would silently use fbs's freeze, without the Sparkle
-# copy, the bundle strip and the ad-hoc signing.
-# These imports register the platform's build commands with fbs (the
-# @command decorator runs on import). So the names are not used here.
-if is_windows():
-	from build_impl.windows import freeze # noqa: F401
-	from fbs.builtin_commands import sign, installer, sign_installer # noqa: F401
-elif is_mac():
-	from build_impl.mac import freeze, sign, sign_installer # noqa: F401
-	from fbs.builtin_commands import installer # noqa: F401
-elif is_linux():
-	from fbs.builtin_commands import installer # noqa: F401
-	if is_ubuntu() or linux_distribution() == 'Debian GNU/Linux':
-		from build_impl.ubuntu import freeze # noqa: F401
-	elif is_arch_linux():
-		from build_impl.arch import freeze # noqa: F401
-		from fbs.builtin_commands import sign_installer # noqa: F401
-	elif is_fedora():
-		from build_impl.fedora import freeze # noqa: F401
-		from fbs.builtin_commands import sign_installer # noqa: F401
-	else:
-		raise NotImplementedError(linux_distribution())
-
-@fbs.cmdline.command
-def release():
-	"""
-	Replace fbs's own `release`. It would clean target/, build without
-	vitraj's freeze steps and then fail at the upload to fbs.sh.
-	"""
-	print(
-		'vitraj releases run on GitHub Actions. To release, push a version\n'
-		'tag, for example:\n\n'
-		'    git tag v1.7.4 && git push origin v1.7.4\n\n'
-		'See "Release pipeline" in AGENTS.md.'
+def main(argv=None):
+	parser = ArgumentParser(prog='build.py', description=__doc__.strip())
+	subparsers = parser.add_subparsers(dest='command', required=True)
+	for name, (fn, help_text) in commands.get_commands().items():
+		subparsers.add_parser(name, help=help_text).set_defaults(fn=fn)
+	parser.add_argument(
+		'--release', action='store_true',
+		help='Also load src/build/settings/release.json'
 	)
+	args = parser.parse_args(argv)
+	commands.init(release=args.release)
+	return args.fn()
 
 if __name__ == '__main__':
-	project_dir = dirname(__file__)
-	fbs.cmdline.main(project_dir)
+	sys.exit(main() or 0)

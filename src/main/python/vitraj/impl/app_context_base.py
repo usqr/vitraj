@@ -3,12 +3,15 @@ The base of vitraj's application context. This replaces the
 ApplicationContext of fbs_runtime with the same behavior.
 """
 from functools import lru_cache
+from vitraj.impl.build_settings import FROZEN_SETTINGS_FILE, PROJECT_DIR, \
+	filter_public_settings, get_profiles, load_project_settings
 from os.path import dirname, exists, join, pardir, realpath
 from vitraj.impl.util.excepthook import Excepthook, StderrExceptionHandler
 from vitraj.impl.util.platform_ import is_mac, is_windows
 from vitraj.impl.util.signal_wakeup import SignalWakeupHandler
 
 import errno
+import json
 import os
 import sys
 
@@ -55,8 +58,12 @@ class ApplicationContext:
 		return result
 	@cached_property
 	def build_settings(self):
-		from vitraj.impl.fbs_build import load_build_settings
-		return load_build_settings()
+		"""The public build settings, for example "version"."""
+		if is_frozen():
+			# The freeze writes this file. See build_impl/freeze.py.
+			with open(self.get_resource(FROZEN_SETTINGS_FILE), 'r') as f:
+				return json.load(f)
+		return filter_public_settings(load_project_settings())
 	def get_resource(self, *rel_path):
 		"""
 		Return the absolute path of the given resource. Raise
@@ -86,5 +93,7 @@ class ApplicationContext:
 		if is_frozen():
 			app_dir = dirname(sys.executable)
 			return [join(app_dir, pardir, 'Resources') if is_mac() else app_dir]
-		from vitraj.impl.fbs_build import get_source_resource_dirs
-		return get_source_resource_dirs()
+		resources = join(PROJECT_DIR, 'src', 'main', 'resources')
+		result = [join(resources, profile) for profile in get_profiles()]
+		result.append(join(PROJECT_DIR, 'src', 'main', 'icons'))
+		return result

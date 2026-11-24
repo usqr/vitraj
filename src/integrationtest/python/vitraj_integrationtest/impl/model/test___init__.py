@@ -261,7 +261,7 @@ class SortedFileSystemModelAT: # Instantiated in vitraj_integrationtest.test_qt
 			files, default_columns=('core.Name', 'core.Size')
 		)
 		self._fs.add_child('stub://', self._stubfs)
-		# Import late to avoid ImportError. The reason it occurs is that fbs's
+		# Import late to avoid ImportError. The reason it occurs is that the
 		# `test` command adds vitraj_integrationtest to sys.path before Core.
 		# That's fair; It's actually unclean for this test to depend on Core.
 		# But it is also very useful as a kind of end-to-end test. So we do it.
