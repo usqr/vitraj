@@ -16,6 +16,8 @@ class Settings:
 		return self._json_dict.get(key, default)
 	def __setitem__(self, key, value):
 		self._json_dict[key] = value
+	def pop(self, key, default=None):
+		return self._json_dict.pop(key, default)
 	def setdefault(self, key, value):
 		return self._json_dict.setdefault(key, value)
 	def flush(self):
