@@ -3,22 +3,25 @@ Close the startup popups of vitraj, then click the file lists.
 
 The SortProbe plugin writes the window layout to a JSON file. This script
 reads that file to find the click points. Before each click, the script makes
-sure that the frontmost window below the click point belongs to vitraj. After
-each click, the script waits for a state that the probe wrote after the click.
-It then makes sure that the click had its result and that no pane changed its
-folder.
+sure that a click at the click point goes to vitraj. After each click, the
+script waits for a state that the probe wrote after the click. It then makes
+sure that the click had its result and that no pane changed its folder.
 
 Run the app with an isolated HOME. See README.md.
 
-The script needs a macOS Accessibility permission for the terminal.
+The script needs a macOS Accessibility permission for the terminal. Without
+it, the clicks do nothing and the hit test fails. The script then stops with
+an error, also with --dry-run.
 """
 
+from ApplicationServices import (
+	AXUIElementCreateSystemWide, AXUIElementCopyElementAtPosition,
+	AXUIElementGetPid
+)
 from Quartz import (
 	CGEventCreateMouseEvent, CGEventPost, kCGHIDEventTap,
-	CGWindowListCopyWindowInfo,
-	kCGWindowListOptionOnScreenOnly, kCGWindowListExcludeDesktopElements,
-	kCGNullWindowID, kCGEventLeftMouseDown, kCGEventLeftMouseUp,
-	kCGEventMouseMoved, kCGMouseButtonLeft
+	kCGEventLeftMouseDown, kCGEventLeftMouseUp, kCGEventMouseMoved,
+	kCGMouseButtonLeft
 )
 
 import argparse
@@ -83,11 +86,14 @@ def wait_after(path, click_time, done, what, timeout=_STEP_TIMEOUT):
 		time.sleep(0.1)
 	raise Failed('After the click on %s, the expected result did not occur.' % what)
 
-def check_process(pid):
+def _process_name(pid):
 	result = subprocess.run(
 		['ps', '-p', str(pid), '-o', 'comm='], capture_output=True, text=True
 	)
-	name = result.stdout.strip()
+	return result.stdout.strip()
+
+def check_process(pid):
+	name = _process_name(pid)
 	if not name:
 		raise Failed('pid %d is not alive.' % pid)
 	# A frozen app runs as 'vitraj'. A source run runs as 'python'.
@@ -95,29 +101,32 @@ def check_process(pid):
 		raise Failed('pid %d is %r, not vitraj.' % (pid, name))
 	return name
 
-def frontmost_window_at(windows, x, y):
-	"""
-	windows is in the order of CGWindowListCopyWindowInfo: front to back. All
-	layers count, because a system dialog or a notification can be above
-	vitraj. Only windows that are fully transparent do not count.
-	"""
-	for window in windows:
-		if window.get('kCGWindowAlpha', 1) == 0:
-			continue
-		bounds = window.get('kCGWindowBounds')
-		if not bounds:
-			continue
-		left, top = bounds['X'], bounds['Y']
-		if left <= x < left + bounds['Width'] and \
-				top <= y < top + bounds['Height']:
-			return window
-	return None
+# The AXError of a terminal without the Accessibility permission:
+_AX_API_DISABLED = -25211
 
-def _on_screen_windows():
-	return CGWindowListCopyWindowInfo(
-		kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
-		kCGNullWindowID
+def _ax_failed(error, x, y):
+	if error == _AX_API_DISABLED:
+		return Failed('The terminal has no Accessibility permission.')
+	return Failed('The hit test at (%d, %d) failed (AXError %d).' % (x, y, error))
+
+def pid_at(x, y):
+	"""
+	Return the pid of the app that gets a click at (x, y). Raise Failed if the
+	hit test fails.
+
+	Use the Accessibility hit test, not the list of windows. The list of
+	windows also contains overlays that do not take clicks, for example the
+	full-screen Dock window of macOS 26.
+	"""
+	error, element = AXUIElementCopyElementAtPosition(
+		AXUIElementCreateSystemWide(), x, y, None
 	)
+	if error:
+		raise _ax_failed(error, x, y)
+	error, pid = AXUIElementGetPid(element, None)
+	if error:
+		raise _ax_failed(error, x, y)
+	return pid
 
 def _post_click(x, y):
 	for event_type in (
@@ -149,11 +158,13 @@ class Clicker:
 	def click(self, rect, label):
 		"""Return the time of the click."""
 		x, y = center(rect)
-		self._check_window(x, y, label)
 		if self.dry_run:
+			self._check_window(x, y, label)
 			print('  would click %s at (%d, %d)' % (label, x, y))
 			return time.time()
 		self._wait_for_double_click_time(x, y)
+		# Do the check after the wait. A window can open during the wait.
+		self._check_window(x, y, label)
 		click_time = time.time()
 		_post_click(x, y)
 		self._last = (x, y, click_time)
@@ -161,14 +172,15 @@ class Clicker:
 		print('  clicked %s at (%d, %d)' % (label, x, y))
 		return click_time
 	def _check_window(self, x, y, label):
-		window = frontmost_window_at(_on_screen_windows(), x, y)
-		if window is None:
-			raise Failed('%s: no window at (%d, %d).' % (label, x, y))
-		owner = window.get('kCGWindowOwnerPID')
+		try:
+			owner = pid_at(x, y)
+		except Failed as e:
+			raise Failed('%s: %s' % (label, e)) from e
 		if owner != self._pid:
+			name = os.path.basename(_process_name(owner)) or '?'
 			raise Failed(
-				'%s: the window at (%d, %d) belongs to %s (pid %s), not vitraj.'
-				% (label, x, y, window.get('kCGWindowOwnerName'), owner)
+				'%s: a click at (%d, %d) goes to %s (pid %d), not vitraj.'
+				% (label, x, y, name, owner)
 			)
 	def _wait_for_double_click_time(self, x, y):
 		if self._last is None:

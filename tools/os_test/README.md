@@ -13,9 +13,9 @@ sorting by a click on a header, or the `..` entry.
 
 | Path | Purpose |
 |------|---------|
-| `click_test.py` | The driver. It needs `pyobjc-framework-Quartz`. |
+| `click_test.py` | The driver. It needs `pyobjc-framework-Quartz` and `pyobjc-framework-ApplicationServices`. |
 | `SortProbe/` | A probe plugin. It writes the window layout to a JSON file every 200 ms. |
-| `requirements.txt` | The dependency of the driver. |
+| `requirements.txt` | The dependencies of the driver. |
 | `test_click_test.py` | Unit tests for the helpers of the driver. They need no GUI. |
 
 The probe plugin writes the layout of the window: the panes, the folder URLs,
@@ -99,9 +99,11 @@ Add `--dry-run` to print the click points and to click nothing. Add
    again at the position of an old state.
 7. After each click, it makes sure that no pane changed its folder.
 
-Before each click, the driver makes sure that the frontmost window at the click
-point belongs to vitraj. All window layers count, because a system dialog or a
-notification can be above vitraj.
+Before each click, the driver makes sure that a click at the click point goes
+to vitraj. It uses the Accessibility hit test for this check. If a system
+dialog or a notification is above vitraj, the check fails. The list of windows
+is not a correct source: on macOS 26, a transparent Dock window covers the full
+primary screen and does not take clicks.
 
 The driver never makes two clicks near the same point within 1.5 times the
 double-click time of the app. Two such clicks on a folder open the folder.
@@ -115,24 +117,43 @@ The driver never clicks "OK". On the configuration alert, OK opens a browser.
 
 - macOS only.
 - The terminal needs an Accessibility permission. Without it, the CGEvent
-  calls do nothing.
+  calls do nothing and the hit test fails. The driver then stops with the
+  error "The terminal has no Accessibility permission", also with
+  `--dry-run`.
 - The Qt coordinates and the CGEvent coordinates are in points, with the origin
   at the top left of the primary screen. Retina scaling does not change them.
   The test passed with the window on the primary screen and on a second
   screen above and to the right of the primary screen.
-- The `SplashScreen` path occurs only in an unlicensed or expired run.
+- The `SplashScreen` path occurs only in an unlicensed or expired run that is
+  not the first run. To get it in an isolated HOME, write
+  `{"fman_version": "0.0.0"}` to
+  `$SCRATCH/home/Library/Application Support/vitraj/Local/Session.json` before
+  the start. This path passed 3 of 3 real runs on 2026-11-24.
 - A real run of the click test is necessary after a change to the probe plugin
   or to the popup texts.
 
-## Known issue
+## Cause of the earlier `zeta` problem
 
 In one run of an earlier version of the driver, the left pane opened the empty
-folder `zeta` while the popups closed. It did not occur again in 3 runs. The
-probable cause: the earlier driver did not wait for a new state after a click.
-After the click on "No", it read the old state and clicked the old "No"
-position again. The file list was below this position after the overlay
-closed. Two such clicks within the double-click time open a folder. The current
-driver waits for a new state and keeps the double-click time between clicks.
-The current driver passed 4 of 4 real runs on 2026-11-24. This does not prove
-the cause, because the problem occurred in only 1 run of 4 before. The report
-file has the click times for more analysis.
+folder `zeta` while the popups closed. The earlier driver did not wait for a
+new state after a click. Thus it could click the position of a closed popup
+again, and the file list was below that position.
+
+A test on 2026-11-24 proved this cause. The test clicked the splash screen
+button, and then clicked the same point 4 more times:
+
+| Gap between the clicks | Result |
+|------------------------|--------|
+| 0.1 s (shorter than the double-click time of 400 ms) | `zeta` opened in 3 of 3 runs |
+| 0.7 s | No folder opened in 2 of 2 runs |
+
+One or two more clicks did not open the folder. Qt does not make a
+double-click from a click on the popup and a click on the file list. Two more
+clicks that both go to the file list make a double-click.
+
+The current driver waits until the popup is closed. It also keeps 1.5 times
+the double-click time between two clicks near the same point. Thus it cannot
+make this double-click.
+
+In the first run of vitraj, the `UsageHelper` can take the first double-click
+and show a hint in place of opening the folder.

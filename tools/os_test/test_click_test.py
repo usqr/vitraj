@@ -18,26 +18,31 @@ def _stub_quartz():
 	quartz = ModuleType('Quartz')
 	for name in (
 		'CGEventCreateMouseEvent', 'CGEventPost', 'kCGHIDEventTap',
-		'CGWindowListCopyWindowInfo', 'kCGWindowListOptionOnScreenOnly',
-		'kCGWindowListExcludeDesktopElements', 'kCGNullWindowID',
 		'kCGEventLeftMouseDown', 'kCGEventLeftMouseUp', 'kCGEventMouseMoved',
 		'kCGMouseButtonLeft'
 	):
 		setattr(quartz, name, 0)
 	return quartz
 
-with patch.dict(sys.modules, {'Quartz': _stub_quartz()}):
+def _stub_application_services():
+	result = ModuleType('ApplicationServices')
+	for name in (
+		'AXUIElementCreateSystemWide', 'AXUIElementCopyElementAtPosition',
+		'AXUIElementGetPid'
+	):
+		setattr(result, name, None)
+	return result
+
+_STUBS = {
+	'Quartz': _stub_quartz(),
+	'ApplicationServices': _stub_application_services()
+}
+with patch.dict(sys.modules, _STUBS):
 	sys.path.insert(0, os.path.dirname(__file__))
 	import click_test as ct
 
 def _button(text, rect=(0, 0, 10, 10)):
 	return {'text': text, 'rect': list(rect)}
-
-def _window(pid, x, y, width, height, alpha=1):
-	return {
-		'kCGWindowOwnerPID': pid, 'kCGWindowAlpha': alpha,
-		'kCGWindowBounds': {'X': x, 'Y': y, 'Width': width, 'Height': height}
-	}
 
 def _row(name, rect=(0, 20, 100, 20)):
 	return {'name': name, 'rect': list(rect)}
@@ -66,18 +71,54 @@ class PopupStepTest(TestCase):
 		popup = {'class': 'QDialog', 'buttons': [_button('OK')]}
 		self.assertEqual((None, None), ct.popup_step(popup))
 
-class FrontmostWindowAtTest(TestCase):
-	def test_returns_the_first_window_that_contains_the_point(self):
-		dialog = _window(99, 50, 50, 100, 100)
-		main = _window(1, 0, 0, 500, 500)
-		self.assertIs(dialog, ct.frontmost_window_at([dialog, main], 60, 60))
-		self.assertIs(main, ct.frontmost_window_at([dialog, main], 10, 10))
-	def test_ignores_transparent_windows(self):
-		invisible = _window(99, 0, 0, 500, 500, alpha=0)
-		main = _window(1, 0, 0, 500, 500)
-		self.assertIs(main, ct.frontmost_window_at([invisible, main], 10, 10))
-	def test_none_outside_of_all_windows(self):
-		self.assertIsNone(ct.frontmost_window_at([_window(1, 0, 0, 5, 5)], 9, 9))
+class PidAtTest(TestCase):
+	def _hit(self, element_error, pid_error=0, pid=42):
+		self.calls = []
+		def copy_element(*args):
+			self.calls.append(('copy', args))
+			return element_error, 'element'
+		def get_pid(*args):
+			self.calls.append(('pid', args))
+			return pid_error, pid
+		with patch.object(ct, 'AXUIElementCreateSystemWide', lambda: 'system'), \
+				patch.object(ct, 'AXUIElementCopyElementAtPosition', copy_element), \
+				patch.object(ct, 'AXUIElementGetPid', get_pid):
+			return ct.pid_at(10, 20)
+	def test_returns_the_pid_of_the_element(self):
+		self.assertEqual(42, self._hit(0))
+		self.assertEqual(
+			[('copy', ('system', 10, 20, None)), ('pid', ('element', None))],
+			self.calls
+		)
+	def test_fails_if_no_element(self):
+		with self.assertRaisesRegex(ct.Failed, 'AXError -25204'):
+			self._hit(-25204)
+	def test_fails_if_no_pid(self):
+		with self.assertRaisesRegex(ct.Failed, 'AXError -25202'):
+			self._hit(0, pid_error=-25202)
+	def test_names_the_missing_permission(self):
+		with self.assertRaisesRegex(ct.Failed, 'no Accessibility permission'):
+			self._hit(-25211)
+
+class CheckWindowTest(TestCase):
+	def _check(self, owner, name='/System/Dock'):
+		clicker = ct.Clicker(7, False, 500, [])
+		with patch.object(ct, 'pid_at', owner), \
+				patch.object(ct, '_process_name', lambda pid: name):
+			clicker._check_window(1, 2, 'button')
+	def test_passes_if_vitraj_gets_the_click(self):
+		self._check(lambda x, y: 7)
+	def test_fails_if_another_app_gets_the_click(self):
+		with self.assertRaisesRegex(ct.Failed, 'goes to Dock'):
+			self._check(lambda x, y: 99)
+	def test_unknown_name_if_the_other_app_exited(self):
+		with self.assertRaisesRegex(ct.Failed, r'goes to \? \(pid 99\)'):
+			self._check(lambda x, y: 99, name='')
+	def test_adds_the_label_if_the_hit_test_fails(self):
+		def fail(x, y):
+			raise ct.Failed('The hit test failed.')
+		with self.assertRaisesRegex(ct.Failed, '^button: The hit test failed'):
+			self._check(fail)
 
 class ParentRowTest(TestCase):
 	def _pane(self, rows):
