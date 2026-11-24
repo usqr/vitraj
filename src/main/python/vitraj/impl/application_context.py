@@ -28,7 +28,7 @@ from vitraj.impl.onboarding.cleanup_guide import CleanupGuide
 from vitraj.impl.onboarding.tutorial import Tutorial
 from vitraj.impl.updater import MacUpdater
 from vitraj.impl.usage_helper import UsageHelper
-from vitraj.impl.util import os_
+from vitraj.impl.util import os_, stall_detector
 from vitraj.impl.util.qt import connect_once
 from vitraj.impl.util.sentry import SentryExceptionHandler
 from vitraj.impl.util.settings import Settings
@@ -68,6 +68,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 		self._main_window = None
 	def run(self):
 		self.init_logging()
+		self._stall_detector = stall_detector.start_if_enabled()
 		self._start_metrics()
 		self._load_plugins()
 		self.session_manager.show_main_window(self.window)
