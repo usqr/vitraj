@@ -213,12 +213,9 @@ def go_up(pane):
 			except ValueError as dest_doesnt_exist:
 				pane.move_cursor_home()
 	parent_dir = dirname(path_before)
-	try:
-		pane.set_path(parent_dir, callback)
-	except FileNotFoundError:
-		# This for instance happens when the user pressed backspace when at
-		# file:/// on Unix.
-		pass
+	# At file:/// on Unix (for example), there is no parent. The default
+	# onerror of set_path(...) then stops without an error.
+	pane.set_path(parent_dir, callback)
 
 class Open(DirectoryPaneCommand):
 	def __call__(self, url=None):
@@ -270,12 +267,13 @@ class OpenDirectory(DirectoryPaneCommand):
 			)
 			return
 		if url_is_dir:
-			try:
-				self.pane.set_path(url, onerror=None)
-			except PermissionError:
+			def onerror(e, url_):
+				if not isinstance(e, PermissionError):
+					raise
 				show_alert(
-					'Access to "%s" was denied.' % as_human_readable(url)
+					'Access to "%s" was denied.' % as_human_readable(url_)
 				)
+			self.pane.set_path(url, onerror=onerror)
 		else:
 			def callback():
 				try:
@@ -2223,7 +2221,9 @@ if PLATFORM == 'Windows':
 				dest = as_url(PurePath(as_human_readable(url)).anchor)
 			else:
 				dest = scheme
-			try:
-				self.pane.set_path(dest)
-			except FileNotFoundError:
-				pass
+			self.pane.set_path(dest, onerror=_ignore_not_found)
+
+def _ignore_not_found(e, url):
+	"""An onerror for set_path(...) that stops quietly if `url` is missing."""
+	if not isinstance(e, FileNotFoundError):
+		raise

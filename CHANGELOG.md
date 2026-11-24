@@ -1,6 +1,16 @@
 # Changelog
 
 ## 1.7.4 (unreleased)
+### Changed (plugin API)
+
+- **`DirectoryPane.set_path()` is asynchronous**: the pane resolves the path in a
+  background thread, so a slow drive no longer blocks the window. When `set_path()`
+  returns, the pane can still show the old location: use `callback` to run code after
+  the new location loads. Errors no longer raise from `set_path()`. vitraj calls
+  `onerror(e, url)` in the main thread instead: return the next URL to try, or `None`
+  to stop. Raise the error to report it. At the root, the default `onerror` stops
+  without an error.
+
 ### Added
 
 - **File preview (F3)**: Press F3, Cmd+Y (Mac), or Shift+F3 to preview files in the
