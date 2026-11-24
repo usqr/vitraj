@@ -134,6 +134,10 @@ jobs:
         run: python build.py sign
 
       - name: Build DMG
+        env:
+          # The Python of setup-python does not search Homebrew's lib dir.
+          # cairosvg needs to find libcairo there:
+          DYLD_FALLBACK_LIBRARY_PATH: /opt/homebrew/lib
         run: python src/build/create_dmg.py
 
       - name: Sign and notarize DMG

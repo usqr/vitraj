@@ -1,5 +1,4 @@
 {
 	"release": true,
-	"environment": "production",
-	"info_plist_extra": ""
+	"environment": "production"
 }
