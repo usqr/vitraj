@@ -2,19 +2,17 @@
 
 ![image](src/main/icons/src/logo.svg)
 
-An opinionated dual-pane file manager for macOS, forked from [fman](https://github.com/fman-users/fman).
+An opinionated dual-pane file manager for macOS, forked from [fman](https://github.com/mherrmann/fman).
 
-Python 3.9 or later is required (tested up to Python 3.14).This is a personal rework targeting macOS as the primary platform. While the cross-platform codebase (Windows, Linux) is preserved, development and testing focus on macOS with Python 3.14.
+Python 3.9 or later is required (tested up to Python 3.14). This is a personal rework targeting macOS as the primary platform. While the cross-platform codebase (Windows, Linux) is preserved, development and testing focus on macOS with Python 3.14.
+
 ## What changed from fman
 
-    pip install -Ur requirements/mac.txt      # macOS
-    pip install -Ur requirements/ubuntu.txt    # Ubuntu/Debian
-    pip install -Ur requirements/arch.txt      # Arch Linux
-    pip install -Ur requirements/fedora.txt    # Fedora
-    pip install -Ur requirements/windows.txt   # Windows### New features
+### New features
+
 - **Settings panel (Cmd+,)** — centralized preferences replacing scattered dialog popups. Font family, font size, hidden files toggle, parent directory entry, and external tool configuration in one place.
-- **Theme editor** — visual color customization with 21 color pickers, live preview, save/load named themes, import/export `.fman-theme` files. Integrates with FmanAlternativeColors plugin for seamless theme switching.
-- **File preview (F3 / Cmd+Y)** — preview text, images (PNG, JPG, GIF, BMP, SVG, WEBP, AVIF), PDFs, and directory stats in the opposite pane. Live updates as you navigate.
+- **Theme editor** — visual color customization with 24 color pickers, live preview, save/load named themes, import/export `.fman-theme` files. Integrates with FmanAlternativeColors plugin for seamless theme switching.
+- **File preview (Cmd+Y)** — preview text, images (PNG, JPG, GIF, BMP, SVG, WEBP, AVIF), PDFs, and directory stats in the opposite pane. Live updates as you navigate.
 - **Parent directory entry (..)** — toggleable `..` entry at the top of every directory listing.
 - **PanelManager** — unified panel system in core. Settings, theme editor, and file preview all use a single API (`window.activate_panel` / `window.deactivate_panel`). Opening one panel auto-closes another. No more duplicated splitter-swap code across plugins.
 
@@ -28,6 +26,7 @@ Python 3.9 or later is required (tested up to Python 3.14).This is a personal re
 - **Bundle size** — stripped unused Qt frameworks and boto3 from frozen app
 - **Security** — Apple credentials moved to environment variables
 - **Filter robustness** — `remove_filter` no longer crashes on missing filter; `..` entries immune to all filters at model level
+
 ### Architecture changes
 
 - Core Python package renamed from `fman` to `vitraj`
@@ -47,7 +46,7 @@ Python 3.9 or later is required (tested up to Python 3.14).This is a personal re
 
 ```bash
 # Clone the repo
-git clone https://github.com/usqr/fman.git vitraj
+git clone https://github.com/usqr/vitraj.git
 cd vitraj
 
 # Create a virtual environment
@@ -102,7 +101,7 @@ Tagged commits auto-build the macOS app and DMG via GitHub Actions
 
 ```bash
 git tag v1.7.5
-git push fork v1.7.5
+git push origin v1.7.5
 ```
 
 The workflow runs on `macos-latest` with Python 3.14, freezes the app, builds
@@ -121,12 +120,11 @@ python src/build/dmg_background.py   # writes target/dmg_background.png
 python src/build/create_dmg.py       # writes target/vitraj.dmg
 ```
 
-Releases are ad-hoc signed (TCC-compliant but unnotarized). Apple Developer
-ID signing + notarization is already implemented in `build_impl/mac.py`
-(`sign()` / `_notarize()` via `altool`) and can be wired into the workflow
-once `APPLE_CERTIFICATE_P12`, `APPLE_ID`, `APPLE_TEAM_ID`, and
-`APPLE_APP_PASSWORD` are added as GitHub secrets. See `AGENTS.md` for the
-remaining release-pipeline work.
+If the `APPLE_CERTIFICATE_P12`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_PASSWORD`, and `APPLE_TEAM_ID` secrets are set, the workflow signs
+the app and the DMG with the Developer ID and notarizes them with `notarytool`.
+If they are not set, the release is ad-hoc signed (TCC-compliant, but users
+see a Gatekeeper warning). See `AGENTS.md` for the details.
 
 ### Optional dependencies
 
@@ -141,7 +139,7 @@ Both are included in `requirements/base.txt`. The app works without them — pre
 
 | Shortcut | Action |
 |----------|--------|
-| F3 / Cmd+Y | Toggle file preview |
+| Cmd+Y | Toggle file preview |
 | Cmd+, | Open settings |
 | Cmd+P | Go to directory |
 | Cmd+Shift+P | Command palette |
@@ -152,6 +150,7 @@ Both are included in `requirements/base.txt`. The app works without them — pre
 | F7 | Create directory |
 | F8 | Move to trash |
 | Escape | Close active panel |
+
 ## Key dependencies
 
 | Package | Version | Notes |
@@ -159,10 +158,8 @@ Both are included in `requirements/base.txt`. The app works without them — pre
 | PyQt5 | 5.15.11 | GUI framework |
 | PyInstaller | 6.19.0 | App freezing/compilation |
 | pyobjc-core | 12.1 | macOS Objective-C bridge |
-
-See `requirements/` for the full list per platform.| PyMuPDF | 1.27.2.2 | PDF preview (optional) |
+| PyMuPDF | 1.27.2.2 | PDF preview (optional) |
 | Pillow | 11.2.1 | AVIF support (optional) |
-| pyobjc-core | 12.1 | macOS Objective-C bridge |
 
 See `requirements/` for the full per-platform list.
 
@@ -182,4 +179,4 @@ See [AGENTS.md](AGENTS.md) for guidance when working on this codebase with AI ag
 
 ## License
 
-This is a fork of [fman](https://github.com/fman-users/fman) by Michael Herrmann. See the original repository for license terms.
+MIT. This is a fork of [fman](https://github.com/mherrmann/fman) by Michael Herrmann. See [LICENSE](LICENSE).
