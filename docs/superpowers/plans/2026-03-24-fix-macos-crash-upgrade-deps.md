@@ -317,6 +317,8 @@ osxtrash is a small C extension. If it doesn't compile on modern macOS/Xcode:
 
 ### rsa 4.x API changes
 
+> **Note (2026-11-24):** PR #38 removed the license check, `licensing.py`, and the `rsa` dependency. This section is only a historical record.
+
 rsa 4.x changed some APIs from 3.x. The licensing code in `src/main/python/fman/impl/licensing.py` uses RSA for license key verification. Key changes:
 - `rsa.verify()` signature is the same in 4.x
 - `rsa.PublicKey.load_pkcs1()` is the same
