@@ -104,48 +104,31 @@ class SessionManager:
 		col_widths = pane_info.get('col_widths')
 		view_mode = pane_info.get('view_mode')
 		gallery_tile_size = pane_info.get('gallery_tile_size')
-		callback = None
 		home_dir = as_url(expanduser('~'))
 		try:
-			if self._exists_and_is_dir(url):
-				location = url
-			elif self._fs.exists(url):
-				location = dirname(url)
-				def callback(pane=pane, url=url):
-					try:
-						pane.place_cursor_at(url)
-					except ValueError as file_disappeared:
-						pass
-			else:
-				location = get_existing_pardir(url, self._exists_and_is_dir) \
-						   or home_dir
-			pane.set_path(location, callback)
+			location, place_cursor = self._get_start_location(url, home_dir)
 		except Exception:
-			msg = 'Could not load folder %s.' % \
-			      (cmdline or as_human_readable(url))
-			self._error_handler.report(msg, exc=False)
-			try:
-				pane.set_path(home_dir)
-			except FileNotFoundError:
-				# This can happen for two reasons:
-				#  1) The file:// system isn't loaded.
-				#  2) The home directory doesn't exist.
-				# Some research showed that 1) is surprisingly common. But there
-				# was no indication that it was caused by a bug in fman itself.
-				# Maybe the users modified the source code of the Core plugin in
-				# such a way that the file:// system failed to load.
-				root = as_url(Path(sys.executable).anchor)
+			self._report_load_error(cmdline, url)
+			location, place_cursor = home_dir, None
+			already_reported = True
+		else:
+			already_reported = False
+		def callback(pane=pane):
+			if place_cursor:
+				place_cursor(pane)
+			# Apply the widths only now: before, the pane shows null://,
+			# which has a different number of columns.
+			if col_widths:
 				try:
-					pane.set_path(root)
-				except Exception:
-					_LOG.exception('Could not open %s.', root)
-		if col_widths:
-			try:
-				pane._widget.set_column_widths(col_widths)
-			except ValueError:
-				# This for instance happens when the old and new numbers of
-				# columns don't match (eg. 2 columns before, 3 now).
-				pass
+					pane._widget.set_column_widths(col_widths)
+				except ValueError:
+					# This for instance happens when the old and new numbers of
+					# columns don't match (eg. 2 columns before, 3 now).
+					pass
+		onerror = self._get_start_onerror(
+			cmdline, url, home_dir, already_reported
+		)
+		pane.set_path(location, callback, onerror)
 		if gallery_tile_size:
 			try:
 				pane.set_gallery_tile_size(int(gallery_tile_size))
@@ -156,6 +139,44 @@ class SessionManager:
 				pane.set_view_mode(view_mode)
 			except ValueError:
 				pass
+	def _get_start_location(self, url, home_dir):
+		"""Return (location, place_cursor or None) for the start-up URL."""
+		if self._exists_and_is_dir(url):
+			return url, None
+		if self._fs.exists(url):
+			def place_cursor(pane):
+				try:
+					pane.place_cursor_at(url)
+				except ValueError: # The file disappeared.
+					pass
+			return dirname(url), place_cursor
+		location = get_existing_pardir(url, self._exists_and_is_dir)
+		return location or home_dir, None
+	def _report_load_error(self, cmdline, url):
+		msg = 'Could not load folder %s.' % (cmdline or as_human_readable(url))
+		self._error_handler.report(msg, exc=False)
+	def _get_start_onerror(self, cmdline, url, home_dir, already_reported=False):
+		"""
+		An onerror for set_path(...): report the error, then try the home
+		directory, then the root of the drive of sys.executable.
+		"""
+		root = as_url(Path(sys.executable).anchor)
+		reported = [True] if already_reported else []
+		def onerror(e, failed_url):
+			if not reported:
+				reported.append(True)
+				self._report_load_error(cmdline, url)
+			if failed_url == root:
+				_LOG.error('Could not open %s.', root, exc_info=e)
+				return None
+			if failed_url == home_dir:
+				# This can happen for two reasons:
+				#  1) The file:// system isn't loaded.
+				#  2) The home directory doesn't exist.
+				# Some research showed that 1) is surprisingly common.
+				return root
+			return home_dir
+		return onerror
 	def _exists_and_is_dir(self, url):
 		try:
 			return self._fs.is_dir(url)

@@ -54,7 +54,9 @@ class ApplicationCommand:
 
 def _set_path_onerror(e, url):
 	if isinstance(e, FileNotFoundError):
-		return dirname(url)
+		parent = dirname(url)
+		# At the root, there is no parent to try. Stop without an error:
+		return None if parent == url else parent
 	raise
 
 class DirectoryPane:
@@ -116,6 +118,17 @@ class DirectoryPane:
 	def get_path(self):
 		return self._widget.get_location()
 	def set_path(self, dir_url, callback=None, onerror=_set_path_onerror):
+		"""
+		Change the location of this pane. The change is asynchronous: when
+		this method returns, the pane can still show the old location. Use
+		`callback` to run code after the new location loaded.
+
+		Errors do not raise from this method. vitraj calls
+		onerror(e, url) in the main thread instead. Return the next URL to
+		try, or None to stop. To report the error, raise it (a bare `raise`
+		works). The default goes to the parent directory when `url` does
+		not exist.
+		"""
 		args = dir_url, '', True
 		while True:
 			for listener in self._listeners:

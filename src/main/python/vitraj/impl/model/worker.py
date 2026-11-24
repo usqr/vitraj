@@ -1,6 +1,6 @@
 from functools import total_ordering
 from queue import PriorityQueue
-from threading import Thread, Lock
+from threading import Thread, Lock, current_thread
 
 import sys
 
@@ -20,13 +20,20 @@ class Worker:
 			raise ValueError('priority must be >= 1')
 		with self._shutdown_lock:
 			if self._shutdown:
-				return
-			self._queue.put(WorkItem(priority, fn, *args, *kwargs))
+				return False
+			self._queue.put(WorkItem(priority, fn, *args, **kwargs))
+			return True
 	def shutdown(self):
 		with self._shutdown_lock:
 			self._shutdown = True
-			self._queue.put(WorkItem(0, lambda: None))
-		self._thread.join()
+			# The stop marker sorts after all queued tasks. So they still run
+			# (and see that the model shut down). This is necessary because
+			# a synchronous @transaction caller waits for its task:
+			self._queue.put(_StopMarker())
+		# Model#shutdown() calls this from the worker thread itself. A thread
+		# cannot join itself. The loop in #_run() ends after the current task:
+		if current_thread() is not self._thread:
+			self._thread.join()
 	def _run(self):
 		while True:
 			task = self._queue.get()
@@ -48,7 +55,7 @@ class WorkItem:
 		except BaseException as e:
 			sys.excepthook(type(e), e, e.__traceback__)
 	def is_shutdown(self):
-		return not self._priority
+		return False
 	def __lt__(self, other):
 		try:
 			return self._priority < other._priority
@@ -60,3 +67,9 @@ class WorkItem:
 				   other._fn, other._args, other._kwargs, other._priority
 		except AttributeError:
 			return NotImplemented
+
+class _StopMarker(WorkItem):
+	def __init__(self):
+		super().__init__(sys.maxsize, lambda: None)
+	def is_shutdown(self):
+		return True

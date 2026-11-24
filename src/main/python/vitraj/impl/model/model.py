@@ -13,22 +13,33 @@ from PyQt5.QtGui import QIcon, QPixmap
 from threading import Event
 from time import time
 
+import sys
+
 def transaction(priority, synchronous=False):
 	def decorator(f):
 		@wraps(f)
 		def result(self, *args, **kwargs):
 			if self._shutdown:
 				return
+			def guarded():
+				# Check again in the worker thread: the model can shut down
+				# after the check above but before the worker runs the task.
+				if not self._shutdown:
+					f(self, *args, **kwargs)
 			if synchronous:
 				assert not is_in_main_thread()
 				has_run = Event()
 				def task():
-					f(self, *args, **kwargs)
-					has_run.set()
-				self._worker.submit(priority, task)
-				has_run.wait()
+					try:
+						guarded()
+					finally:
+						# Also on an error. Else the caller waits forever:
+						has_run.set()
+				# The worker drops the task if it shut down in the meantime:
+				if self._worker.submit(priority, task):
+					has_run.wait()
 			else:
-				self._worker.submit(priority, f, self, *args, **kwargs)
+				self._worker.submit(priority, guarded)
 		return result
 	return decorator
 
@@ -407,14 +418,28 @@ class Model(SortFilterTableModel, DragAndDrop):
 		self._shutdown = True
 		# Similarly to why we don't want to call FileWatcher#start() from the
 		# main thread, we also don't want to call #shutdown() from it to avoid
-		# potential deadlocks. So do it asynchronously:
-		self._shutdown_async()
-	@transaction(priority=1)
+		# potential deadlocks. So do it asynchronously. Do not use
+		# @transaction here: it skips all work once self._shutdown is set.
+		# Run after all queued transactions. They see self._shutdown and
+		# return. So a stale task (for example reload) cannot fill the cache
+		# again after _shutdown_async cleared it:
+		self._worker.submit(_SHUTDOWN_PRIORITY, self._shutdown_async)
 	def _shutdown_async(self):
-		self._file_watcher.shutdown()
-		self._worker.shutdown()
+		try:
+			self._file_watcher.shutdown()
+			# Free the cached file data of this location. A later visit
+			# reloads it anyway (see SortedFileSystemModel#_show). If another
+			# pane shows this location, it only computes its data again:
+			self._fs.clear_cache(self._location)
+		finally:
+			# For example, clear_cache(...) raises FileNotFoundError when the
+			# plugin of the location's scheme was unloaded. Stop anyway:
+			self._worker.shutdown()
 
 _NOT_LOADED = object()
+
+# After all @transaction priorities, before the stop marker of the Worker:
+_SHUTDOWN_PRIORITY = sys.maxsize - 1
 
 def _is_parent_entry(row):
 	return row.key.endswith('/..')

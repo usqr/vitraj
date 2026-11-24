@@ -5,7 +5,7 @@ import os
 from collections import OrderedDict
 
 from PyQt5.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
-from PyQt5.QtGui import QImageReader, QPixmap
+from PyQt5.QtGui import QImage, QImageReader, QPixmap
 
 
 _UNITS = ('B', 'KB', 'MB', 'GB', 'TB')
@@ -65,7 +65,7 @@ def _lru_set(od, key, value, cap):
 
 class _GeneratorSignals(QObject):
 	generated = pyqtSignal(str, object)  # (cache_key, QImage or None)
-	disk_loaded = pyqtSignal(str, object)  # (cache_key, QPixmap or None)
+	disk_loaded = pyqtSignal(str, object)  # (cache_key, QImage or None)
 	resolution_read = pyqtSignal(object, object)  # ((path, mtime_ns), QSize or None)
 
 
@@ -97,7 +97,10 @@ class _Generator(QRunnable):
 
 
 class _DiskLoader(QRunnable):
-	"""Load disk-cached QPixmap off the UI thread."""
+	"""
+	Load a disk-cached thumbnail off the UI thread. Emit a QImage: QPixmap
+	is not safe outside the GUI thread. The GUI thread converts it.
+	"""
 
 	def __init__(self, key, disk_path, signals):
 		super().__init__()
@@ -106,11 +109,10 @@ class _DiskLoader(QRunnable):
 		self._signals = signals
 
 	def run(self):
-		pix = QPixmap(self._disk_path)
-		if pix.isNull():
-			self._signals.disk_loaded.emit(self._key, None)
-		else:
-			self._signals.disk_loaded.emit(self._key, pix)
+		image = QImage(self._disk_path)
+		self._signals.disk_loaded.emit(
+			self._key, None if image.isNull() else image
+		)
 
 
 class _ResolutionReader(QRunnable):
@@ -266,14 +268,14 @@ class ThumbnailCache(QObject):
 			pass
 		self.thumbnail_ready.emit(path)
 
-	def _on_disk_loaded(self, key, pix):
+	def _on_disk_loaded(self, key, image):
 		# A null pixmap here means the disk file existed but was unreadable
 		# (corrupt PNG). Do NOT mark _failed — generation can still recover
 		# and will overwrite the bad file. Caller's next request() handles it.
 		path = self._disk_load_for.pop(key, None)
-		if path is None or pix is None or pix.isNull():
+		if path is None or image is None or image.isNull():
 			return
-		_lru_set(self._mem_pixmaps, key, pix, _MAX_PIXMAPS)
+		_lru_set(self._mem_pixmaps, key, QPixmap.fromImage(image), _MAX_PIXMAPS)
 		self.thumbnail_ready.emit(path)
 
 	def _on_resolution_read(self, cache_k, size):

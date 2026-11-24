@@ -5,7 +5,7 @@ from vitraj.impl.plugins.builtin import NullFileSystem, NullColumn
 from vitraj.impl.plugins.mother_fs import MotherFileSystem
 from vitraj.impl.util import filenotfounderror
 from vitraj.impl.util.qt import connect_once, DisplayRole, DecorationRole
-from vitraj.impl.util.qt.thread import run_in_main_thread
+from vitraj.impl.util.qt.thread import run_in_main_thread, is_in_main_thread
 from vitraj.url import splitscheme
 from vitraj_unittest.impl.model import StubFileSystem
 from PyQt5.QtCore import Qt
@@ -25,8 +25,8 @@ class SortedFileSystemModelAT: # Instantiated in vitraj_integrationtest.test_qt
 	def test_set_location(self):
 		inited = Event()
 		self._model.set_location('stub://', callback=inited.set)
-		self.assertEqual('stub://', self._model.get_location())
 		self._wait_for(inited)
+		self.assertEqual('stub://', self._model.get_location())
 		self._expect_column_headers(['Name', 'Size'])
 		self.assertEqual(
 			(self._name_column, self._size_column), self._model.get_columns()
@@ -51,6 +51,49 @@ class SortedFileSystemModelAT: # Instantiated in vitraj_integrationtest.test_qt
 		self.assertEqual(
 			[(self._file_icon, None)] * (self._NUM_VISIBLE_ROWS - 1), icons[1:]
 		)
+	def test_set_location_error_goes_to_onerror_in_main_thread(self):
+		calls = []
+		done = Event()
+		def onerror(e, url):
+			calls.append((type(e), url, is_in_main_thread()))
+			done.set()
+		self._model.set_location('stub://missing', onerror=onerror)
+		self._wait_for(done)
+		self.assertEqual(
+			[(FileNotFoundError, 'stub://missing', True)], calls
+		)
+		self.assertEqual('null://', self._model.get_location())
+	def test_onerror_gives_next_url(self):
+		loaded = Event()
+		self._model.set_location(
+			'stub://missing', callback=loaded.set,
+			onerror=lambda e, url: 'stub://dir'
+		)
+		self._wait_for(loaded)
+		self.assertEqual('stub://dir', self._model.get_location())
+	def test_later_set_location_wins(self):
+		loaded = Event()
+		self._model.set_location('stub://dir')
+		self._model.set_location('stub://', callback=loaded.set)
+		self._wait_for(loaded)
+		sleep(.2)
+		self.assertEqual('stub://', self._model.get_location())
+	def test_same_failing_url_goes_to_excepthook(self):
+		reported = []
+		done = Event()
+		def excepthook(*args):
+			reported.append(args[0])
+			done.set()
+		excepthook_before = sys.excepthook
+		sys.excepthook = excepthook
+		try:
+			self._model.set_location(
+				'stub://missing', onerror=lambda e, url: 'stub://missing'
+			)
+			self._wait_for(done)
+		finally:
+			sys.excepthook = excepthook_before
+		self.assertEqual([FileNotFoundError], reported)
 	def _load_visible_rows(self):
 		loaded = Event()
 		load_rows = run_in_main_thread(self._model.load_rows)

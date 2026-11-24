@@ -3,13 +3,17 @@ from vitraj.impl.model.drag_and_drop import DragAndDrop
 from vitraj.impl.model.diff import ComputeDiff
 from vitraj.impl.model.file_watcher import FileWatcher
 from vitraj.impl.model.table import TableModel, Cell, Row
+from vitraj.impl.model.worker import Worker
 from vitraj.impl.util.qt.thread import run_in_main_thread
 from vitraj.impl.util.url import is_pardir
 from vitraj.url import dirname, splitscheme
 from PyQt5.QtCore import pyqtSignal, QSortFilterProxyModel, Qt
 
+from threading import Lock
+
 import errno
 import sip
+import sys
 
 class SortedFileSystemModel(QSortFilterProxyModel):
 
@@ -27,29 +31,96 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		self._filters = []
 		self._already_visited = set()
 		self._num_rows_to_preload = 0
-		self.set_location(null_location)
+		self._location_request = 0
+		self._location_request_lock = Lock()
+		self._resolver = Worker()
+		self._resolver.start()
+		# Synchronous, so that there always is a source model:
+		self._show(*self._resolve(null_location, ''), True, lambda: None)
 		self._fs.file_removed.add_callback(self._on_file_removed)
 	def set_num_rows_to_preload(self, preload_rows):
 		self._num_rows_to_preload = preload_rows
 	def set_location(
 		self, url, sort_column='', ascending=True, callback=None, onerror=None
 	):
+		"""
+		Resolve `url` in a background thread, then show it. This keeps a slow
+		drive from blocking the main thread. A later call cancels an earlier
+		one. On an error, call onerror(e, url) in the main thread, inside the
+		`except` block (so a bare `raise` works). onerror returns the next URL
+		to try, or None to stop. If onerror raises, or a URL fails two times,
+		the error goes to sys.excepthook.
+		"""
 		if callback is None:
 			callback = lambda: None
 		if onerror is None:
-			def onerror(*_):
-				raise
-		error_urls = {url}
-		while True:
+			onerror = _reraise
+		# set_path(...) can run in any thread. So count under a lock:
+		with self._location_request_lock:
+			self._location_request += 1
+			request_id = self._location_request
+		request = _LocationRequest(
+			request_id, sort_column, ascending, callback, onerror
+		)
+		self._resolve_async(request, url)
+	def _resolve_async(self, request, url):
+		def task():
 			try:
-				self._set_location(url, sort_column, ascending, callback)
-				break
-			except Exception as e:
-				url = onerror(e, url)
-				if url in error_urls:
-					raise
-				error_urls.add(url)
-	def _set_location(self, url, sort_column, ascending, callback):
+				try:
+					resolved = self._resolve(url, request.sort_column)
+				except Exception as e:
+					self._on_resolve_error(request, e, url)
+				else:
+					self._on_resolved(request, *resolved)
+			except SystemExit:
+				# run_in_main_thread raises this when the app quits. Then the
+				# location change does not matter any more.
+				pass
+		self._resolver.submit(1, task)
+	@run_in_main_thread
+	def _on_resolve_error(self, request, e, url):
+		if request.id != self._location_request:
+			return
+		try:
+			try:
+				raise e
+			except Exception:
+				next_url = request.onerror(e, url)
+		except Exception:
+			sys.excepthook(*sys.exc_info())
+			return
+		if next_url is None:
+			return
+		if next_url in request.error_urls:
+			sys.excepthook(type(e), e, e.__traceback__)
+			return
+		request.error_urls.add(next_url)
+		self._resolve_async(request, next_url)
+	@run_in_main_thread
+	def _on_resolved(self, request, url, columns, sort_col_index):
+		if request.id != self._location_request:
+			return
+		self._show(url, columns, sort_col_index, request.ascending, request.callback)
+	def _show(self, url, columns, sort_col_index, ascending, callback):
+		old_model = self.sourceModel()
+		if old_model:
+			if url == old_model.get_location():
+				callback()
+				return
+			old_model.shutdown()
+		if url in self._already_visited:
+			orig_callback = callback
+			def callback():
+				orig_callback()
+				self.reload()
+		self._set_location_main(
+			url, columns, sort_col_index, ascending, callback
+		)
+	def _resolve(self, url, sort_column):
+		"""
+		Do the file system work of a location change: resolve `url` and get
+		its columns. Return (url, columns, sort_col_index).
+		"""
 		try:
 			url_resolved = self._fs.resolve(url)
 		except FileNotFoundError:
@@ -70,12 +141,6 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 			# file system changes, we do need to follow the rewrite to support
 			# cases such as zip:/// resolving to file:///.
 			url = url_resolved
-		old_model = self.sourceModel()
-		if old_model:
-			if url == old_model.get_location():
-				callback()
-				return
-			old_model.shutdown()
 		columns = self._fs.get_columns(url)
 		sort_col_index = 0
 		if sort_column:
@@ -84,14 +149,7 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 				sort_col_index = column_names.index(sort_column)
 			except ValueError:
 				pass
-		if url in self._already_visited:
-			orig_callback = callback
-			def callback():
-				orig_callback()
-				self.reload()
-		self._set_location_main(
-			url, columns, sort_col_index, ascending, callback
-		)
+		return url, columns, sort_col_index
 	@run_in_main_thread
 	def _set_location_main(
 		self, url, columns, sort_col_index, ascending, callback
@@ -149,21 +207,23 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 	def find(self, url):
 		return self.mapFromSource(self.sourceModel().find(url))
 	def _on_file_removed(self, url):
-		if is_pardir(url, self.get_location()):
-			dir_ = dirname(url)
-			if dir_ == url:
-				self.set_location(self._null_location)
-			else:
-				try:
-					self.set_location(dir_)
-				except OSError:
-					# In a perfect world, would like to only handle
-					# FileNotFoundError here. But there can of course also be
-					# other reasons. For example, when on a network share on
-					# Windows, we may get a PermissionError trying to list a
-					# parent directory we don't have access to. So catch all
-					# OSErrors and in the worst case go to null://.
-					self._on_file_removed(dir_)
+		if not is_pardir(url, self.get_location()):
+			return
+		dir_ = dirname(url)
+		if dir_ == url:
+			self.set_location(self._null_location)
+		else:
+			self.set_location(dir_, onerror=self._on_parent_error)
+	def _on_parent_error(self, e, url):
+		# In a perfect world, would like to only handle FileNotFoundError
+		# here. But there can of course also be other reasons. For example,
+		# when on a network share on Windows, we may get a PermissionError
+		# trying to list a parent directory we don't have access to. So go up
+		# on all OSErrors and in the worst case go to null://.
+		if not isinstance(e, OSError):
+			raise
+		parent = dirname(url)
+		return self._null_location if parent == url else parent
 	def _connect_signals(self, model):
 		# Would prefer signal.connect(self.signal.emit) here. But PyQt doesn't
 		# support it. So we need Python wrappers "_emit_...":
@@ -194,3 +254,15 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		self.transaction_ended.emit()
 	def __str__(self):
 		return '<%s: %s>' % (self.__class__.__name__, self.get_location())
+
+def _reraise(e, url):
+	raise
+
+class _LocationRequest:
+	def __init__(self, id_, sort_column, ascending, callback, onerror):
+		self.id = id_
+		self.sort_column = sort_column
+		self.ascending = ascending
+		self.callback = callback
+		self.onerror = onerror
+		self.error_urls = set()

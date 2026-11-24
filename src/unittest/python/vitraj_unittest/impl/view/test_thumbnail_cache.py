@@ -197,6 +197,38 @@ class ThumbnailCacheDiskLoadTest(TestCase):
 		self.assertNotIn(key, cache._failed)
 		self.assertNotIn(key, cache._disk_load_for)
 
+	def test_disk_loader_emits_qimage(self):
+		# QPixmap is not safe outside the GUI thread, so the worker must
+		# emit a QImage:
+		from PyQt5.QtCore import Qt
+		from PyQt5.QtGui import QImage
+		from vitraj.impl.view.thumbnails import _DiskLoader
+		png = os.path.join(self.cache_dir, 'thumb.png')
+		image = QImage(8, 8, QImage.Format_RGB32)
+		image.fill(Qt.red)
+		image.save(png)
+		emitted = []
+		class StubSignals:
+			class disk_loaded:
+				@staticmethod
+				def emit(key, value):
+					emitted.append((key, value))
+		_DiskLoader('k', png, StubSignals()).run()
+		self.assertEqual('k', emitted[0][0])
+		self.assertIsInstance(emitted[0][1], QImage)
+
+	def test_on_disk_loaded_converts_image_to_pixmap(self):
+		from PyQt5.QtCore import Qt
+		from PyQt5.QtGui import QImage, QPixmap
+		from PyQt5.QtWidgets import QApplication
+		_app = QApplication.instance() or QApplication([]) # noqa: F841 (QPixmap needs it)
+		cache = ThumbnailCache(self.cache_dir)
+		cache._disk_load_for['k'] = self.src
+		image = QImage(8, 8, QImage.Format_RGB32)
+		image.fill(Qt.red)
+		cache._on_disk_loaded('k', image)
+		self.assertIsInstance(cache._mem_pixmaps['k'], QPixmap)
+
 	def test_request_skips_when_disk_load_pending(self):
 		# Avoid duplicate work: if get() already scheduled a disk load,
 		# request() must not also schedule generation.
