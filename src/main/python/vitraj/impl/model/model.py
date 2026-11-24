@@ -407,11 +407,14 @@ class Model(SortFilterTableModel, DragAndDrop):
 		self._shutdown = True
 		# Similarly to why we don't want to call FileWatcher#start() from the
 		# main thread, we also don't want to call #shutdown() from it to avoid
-		# potential deadlocks. So do it asynchronously:
-		self._shutdown_async()
-	@transaction(priority=1)
+		# potential deadlocks. So do it asynchronously. Do not use
+		# @transaction here: it skips all work once self._shutdown is set.
+		self._worker.submit(1, self._shutdown_async)
 	def _shutdown_async(self):
 		self._file_watcher.shutdown()
+		# Free the cached file data of this location. A later visit reloads it
+		# anyway (see SortedFileSystemModel#_set_location):
+		self._fs.clear_cache(self._location)
 		self._worker.shutdown()
 
 _NOT_LOADED = object()

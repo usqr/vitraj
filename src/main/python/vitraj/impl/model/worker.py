@@ -1,6 +1,6 @@
 from functools import total_ordering
 from queue import PriorityQueue
-from threading import Thread, Lock
+from threading import Thread, Lock, current_thread
 
 import sys
 
@@ -26,7 +26,10 @@ class Worker:
 		with self._shutdown_lock:
 			self._shutdown = True
 			self._queue.put(WorkItem(0, lambda: None))
-		self._thread.join()
+		# Model#shutdown() calls this from the worker thread itself. A thread
+		# cannot join itself. The loop in #_run() ends after the current task:
+		if current_thread() is not self._thread:
+			self._thread.join()
 	def _run(self):
 		while True:
 			task = self._queue.get()
