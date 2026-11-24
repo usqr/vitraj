@@ -94,6 +94,8 @@ def _short_time_format():
 	Read the format from QLocale(), not from QLocale(name): only the former
 	includes the user's OS settings (for example a 24-hour clock). The key
 	is the locale name, so a change of the default locale gives a new format.
+	A change of the OS time format (for example 12/24-hour) with the same
+	locale applies after a restart of vitraj.
 	"""
 	locale = QLocale()
 	name = locale.name()

@@ -1,4 +1,5 @@
 from vitraj import DirectoryPaneCommand, DirectoryPaneListener
+from vitraj.impl.util.qt.thread import run_in_main_thread
 from vitraj.url import splitscheme, basename, as_human_readable
 from collections import namedtuple
 from file_preview._async import AsyncRunner, Debouncer
@@ -431,7 +432,18 @@ class PreviewModeListener(DirectoryPaneListener):
 		active = w.get_active_panel(self.pane)
 		if active and active[0] == _PANEL_ID:
 			file_url = self.pane.get_file_under_cursor()
-			active[1].show_preview(file_url)
+			# vitraj calls listeners in a background thread. The preview
+			# uses widgets and QTimers, so it must run in the main thread:
+			_show_preview_in_main_thread(active[1], file_url)
+
+
+@run_in_main_thread
+def _show_preview_in_main_thread(widget, file_url):
+	try:
+		widget.show_preview(file_url)
+	except RuntimeError:
+		# Qt deleted the widget in the meantime (the panel was closed).
+		pass
 
 
 def _open_preview(pane):

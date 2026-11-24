@@ -216,3 +216,25 @@ class RenderPdfTest(TestCase):
 			result = file_preview_pdf._render_first_page(fitz, path)
 		self.assertFalse(result.image.isNull())
 		self.assertEqual('doc.pdf (2 pages)', result.header)
+
+class ShowPreviewInMainThreadTest(TestCase):
+	def test_runs_in_main_thread(self):
+		from file_preview import _show_preview_in_main_thread
+		from threading import Thread
+		from vitraj.impl.util.qt.thread import is_in_main_thread
+		calls = []
+		class Spy:
+			def show_preview(self, url):
+				calls.append((url, is_in_main_thread()))
+		Thread(
+			target=_show_preview_in_main_thread, args=(Spy(), 'u'),
+			daemon=True
+		).start()
+		self.assertTrue(_wait_until(lambda: calls))
+		self.assertEqual([('u', True)], calls)
+	def test_deleted_widget_is_ignored(self):
+		from file_preview import _show_preview_in_main_thread
+		class Deleted:
+			def show_preview(self, url):
+				raise RuntimeError('wrapped C/C++ object has been deleted')
+		_show_preview_in_main_thread(Deleted(), 'u')
