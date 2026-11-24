@@ -34,6 +34,17 @@ class SentryExceptionHandlerTest(TestCase):
 			self.assertEqual({'id': 41}, event.get('user'))
 			exc_type = event['exception']['values'][0]['type']
 			self.assertEqual('ZeroDivisionError', exc_type)
+	def test_user_from_worker_thread_goes_with_main_thread_events(self):
+		# vitraj sets the user in the metrics thread.
+		events = []
+		handler = self._init_with_stub_transport(events)
+		worker = Thread(target=handler.scope.set_user, args=({'id': 7},))
+		worker.start()
+		worker.join()
+		handler.handle(*_get_exc_info())
+		sentry_sdk.flush()
+		self.assertEqual(1, len(events))
+		self.assertEqual({'id': 7}, events[0].get('user'))
 	def test_handle_is_rate_limited(self):
 		handler = SentryExceptionHandler(None, '1.2.3', 'test', rate_limit=2)
 		handler.init()
@@ -53,7 +64,8 @@ class SentryExceptionHandlerTest(TestCase):
 			handler.init()
 		return handler
 	def tearDown(self):
-		sentry_sdk.init(None)
+		# The default integrations patch the interpreter for all later tests.
+		sentry_sdk.init(None, default_integrations=False)
 		sentry_sdk.get_global_scope().clear()
 		super().tearDown()
 

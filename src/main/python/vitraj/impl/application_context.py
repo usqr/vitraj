@@ -31,8 +31,8 @@ from vitraj.impl.updater import MacUpdater
 from vitraj.impl.usage_helper import UsageHelper
 from vitraj.impl.util import os_
 from vitraj.impl.util.qt import connect_once
-from vitraj.impl.util.settings import Settings
 from vitraj.impl.util.sentry import SentryExceptionHandler
+from vitraj.impl.util.settings import Settings
 from vitraj.impl.view import ProxyStyle
 from vitraj.impl.widgets import MainWindow, SplashScreen, Application
 from os import makedirs
