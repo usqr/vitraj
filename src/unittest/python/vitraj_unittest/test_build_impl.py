@@ -91,3 +91,18 @@ class MacIconsTest(_SettingsTestCase):
 		self.assertIn((1024, 1), icons)
 		self.assertIn((16, 1), icons)
 		self.assertIn(join('icons', 'mac'), icons[(128, 1)])
+
+class LinuxSystemLibrariesTest(_SettingsTestCase):
+	def test_removes_libraries_in_internal_dir(self):
+		from build_impl.linux import _remove_system_libraries
+		with TemporaryDirectory() as freeze_dir:
+			internal = join(freeze_dir, '_internal')
+			os.makedirs(internal)
+			for name in ('libstdc++.so.6', 'libqt.so.5'):
+				open(join(internal, name), 'w').close()
+			open(join(freeze_dir, 'libdrm.so.2'), 'w').close()
+			SETTINGS.clear()
+			SETTINGS.update({'freeze_dir': freeze_dir})
+			_remove_system_libraries()
+			self.assertEqual(['libqt.so.5'], os.listdir(internal))
+			self.assertNotIn('libdrm.so.2', os.listdir(freeze_dir))

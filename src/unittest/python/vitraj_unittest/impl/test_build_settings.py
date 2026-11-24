@@ -71,3 +71,17 @@ class ExpandPlaceholdersTest(TestCase):
 		self.assertEqual(
 			{'a': ['x-1']}, expand_placeholders({'a': ['x-${n}']}, {'n': 1})
 		)
+
+class ReleaseProfileTest(TestCase):
+	def test_release_keeps_mac_info_plist_extra(self):
+		# release.json must not replace the TCC keys of mac.json:
+		settings = load_project_settings(
+			profiles=['base', 'secret', 'mac', 'release']
+		)
+		self.assertIn('NSDesktopFolderUsageDescription', settings['info_plist_extra'])
+		self.assertEqual('production', settings['environment'])
+	def test_release_does_not_use_fman_server(self):
+		settings = load_project_settings(
+			profiles=['base', 'secret', 'mac', 'release']
+		)
+		self.assertNotIn('fman.io', settings['server_url'])

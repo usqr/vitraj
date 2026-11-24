@@ -14,9 +14,9 @@ done
 THIS_SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 
 if [ "$1" = "--help" ]; then
-	echo "fman version ${version}"
-	echo "Usage: fman [left_dir [right_dir]]    open the given directories"
+	echo "vitraj version ${version}"
+	echo "Usage: vitraj [left_dir [right_dir]]    open the given directories"
 	exit 0
 fi
 
-($THIS_SCRIPT_DIR/../../MacOS/fman "$@" > /dev/null 2>&1 &)
+($THIS_SCRIPT_DIR/../../MacOS/${app_name} "$@" > /dev/null 2>&1 &)

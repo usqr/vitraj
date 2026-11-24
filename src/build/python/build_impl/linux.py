@@ -9,15 +9,21 @@ def freeze():
 	run_pyinstaller()
 	generate_resources()
 	copy(path('src/main/icons/Icon.ico'), path('${freeze_dir}'))
-	# PyInstaller packages these libraries, but the versions of other
-	# distributions then fail with "GLIBCXX_... not found". So use the
-	# system's own versions:
+	_remove_system_libraries()
+	_postprocess()
+
+def _remove_system_libraries():
+	"""
+	PyInstaller packages these libraries, but then the app fails on other
+	distributions with "GLIBCXX_... not found". So use the system's own
+	versions. PyInstaller 6 puts the libraries into _internal/.
+	"""
 	for pattern in (
 		'libstdc++.so.*', 'libtinfo.so.*', 'libreadline.so.*', 'libdrm.so.*'
 	):
-		for file_path in glob(path('${freeze_dir}/' + pattern)):
-			remove(file_path)
-	_postprocess()
+		for lib_dir in ('${freeze_dir}', '${freeze_dir}/_internal'):
+			for file_path in glob(path(lib_dir + '/' + pattern)):
+				remove(file_path)
 
 def _postprocess():
 	rmtree(path('${core_plugin_in_freeze_dir}/bin/mac'))
