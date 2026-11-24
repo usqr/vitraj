@@ -6,12 +6,22 @@ Requires: File Preview plugin (must be loaded first)
 """
 from PyQt5.QtGui import QPixmap, QImage
 
+from functools import lru_cache
+
 import os
 
-try:
-	import fitz as _fitz
-except ImportError:
-	_fitz = None
+
+@lru_cache(maxsize=1)
+def _load_fitz():
+	"""
+	Return the PyMuPDF module, or None if it is not installed. Import late:
+	PyMuPDF takes ~400 ms to import and vitraj loads this plugin at startup.
+	"""
+	try:
+		import fitz
+	except ImportError:
+		return None
+	return fitz
 
 try:
 	from file_preview import PreviewWidget, _format_size
@@ -20,6 +30,7 @@ except ImportError:
 
 
 def _show_pdf(widget, path):
+	_fitz = _load_fitz()
 	if _fitz is None:
 		widget._show_message('PDF preview requires PyMuPDF.\n\npip install PyMuPDF')
 		return

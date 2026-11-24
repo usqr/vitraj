@@ -5,12 +5,22 @@ from PyQt5.QtGui import QPixmap, QFont, QImage
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPlainTextEdit, \
 	QStackedWidget, QScrollArea, QSizePolicy
 
+from functools import lru_cache
+
 import os
 
-try:
-	from PIL import Image as _PIL_Image
-except ImportError:
-	_PIL_Image = None
+
+@lru_cache(maxsize=1)
+def _pil_image():
+	"""
+	Return PIL.Image, or None if Pillow is not installed. Import late:
+	Pillow takes ~150 ms to import and only the AVIF preview needs it.
+	"""
+	try:
+		from PIL import Image
+	except ImportError:
+		return None
+	return Image
 
 _TEXT_EXTENSIONS = {
 	'.txt', '.py', '.js', '.ts', '.jsx', '.tsx', '.json', '.xml', '.html',
@@ -186,6 +196,7 @@ class PreviewWidget(QWidget):
 			self._show_message('Cannot read file: %s' % e)
 
 	def _show_pillow_image(self, path):
+		_PIL_Image = _pil_image()
 		if _PIL_Image is None:
 			self._show_message('AVIF preview requires Pillow.\n\npip install Pillow')
 			return

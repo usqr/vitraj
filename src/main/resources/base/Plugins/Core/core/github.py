@@ -1,10 +1,8 @@
-from requests import RequestException
 from urllib.error import HTTPError, URLError
 from urllib.request import urlopen
 
 import json
 import re
-import requests
 import sys
 
 def find_repos(topics):
@@ -78,6 +76,10 @@ def _get(url):
 		raise
 	except URLError:
 		# Fallback: Some users get "SSL: CERTIFICATE_VERIFY_FAILED" for urlopen.
+		# Import late: requests takes ~140 ms to import and vitraj loads this
+		# module at startup.
+		import requests
+		from requests import RequestException
 		try:
 			response = requests.get(url)
 		except RequestException as e:
