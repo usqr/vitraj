@@ -28,9 +28,8 @@ from vitraj.impl.onboarding.cleanup_guide import CleanupGuide
 from vitraj.impl.onboarding.tutorial import Tutorial
 from vitraj.impl.updater import MacUpdater
 from vitraj.impl.usage_helper import UsageHelper
-from vitraj.impl.util import os_
+from vitraj.impl.util import stall_detector
 from vitraj.impl.util.qt import connect_once
-from vitraj.impl.util.sentry import SentryExceptionHandler
 from vitraj.impl.util.settings import Settings
 from vitraj.impl.view import ProxyStyle
 from vitraj.impl.widgets import MainWindow, Application
@@ -68,6 +67,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 		self._main_window = None
 	def run(self):
 		self.init_logging()
+		self._stall_detector = stall_detector.start_if_enabled()
 		self._start_metrics()
 		self._load_plugins()
 		self.session_manager.show_main_window(self.window)
@@ -448,28 +448,6 @@ class FrozenApplicationContext(DevelopmentApplicationContext):
 	def updater(self):
 		if self._should_auto_update():
 			return MacUpdater(self.app)
-	@cached_property
-	def exception_handlers(self):
-		result = super().exception_handlers
-		result.append(self.sentry_exception_handler)
-		return result
-	@cached_property
-	def sentry_exception_handler(self):
-		return SentryExceptionHandler(
-			self.build_settings['sentry_dsn'],
-			self.fman_version,
-			self.build_settings['environment'],
-			callback=self._on_sentry_init
-		)
-	def _on_sentry_init(self):
-		scope = self.sentry_exception_handler.scope
-		scope.set_extra('os_name', os_.name())
-		scope.set_extra('os_version', os_.version())
-		scope.set_extra('os_distribution', os_.distribution())
-	def _on_metrics_initialised(self):
-		self.sentry_exception_handler.scope.set_user({
-			'id': self.metrics.get_user()
-		})
 	def _should_auto_update(self):
 		if not is_mac():
 			# On Windows and Linux, auto-updates are handled by external
