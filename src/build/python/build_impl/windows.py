@@ -1,5 +1,5 @@
-from build_impl import copy_python_library, upload_to_s3
-from fbs import path, SETTINGS
+from build_impl import copy_python_library
+from fbs import path
 from fbs.cmdline import command
 from fbs.freeze.windows import freeze_windows
 from os import remove
@@ -26,11 +26,3 @@ def _copy_winpty_files():
 	import winpty
 	winpty_dir = dirname(winpty.__file__)
 	copy(join(winpty_dir, 'winpty-agent.exe'), path('${freeze_dir}'))
-
-@command
-def upload():
-	if SETTINGS['release']:
-		src_path = path('target/vitrajSetup.exe')
-		dest_path = SETTINGS['version'] + '/vitrajSetup.exe'
-		upload_to_s3(src_path, dest_path)
-		print('\nDone. Please upload vitrajSetup.exe to update.vitraj.io now.')

@@ -13,12 +13,6 @@
 	"release": false,
 	"environment": "local",
 	"server_url": "http://127.0.0.1:8000",
-	"record_release_url": "${server_url}/api/record-release/",
-	"server_api_secret": "k92XhhhmOf8rD7QJ",
-	"local_media_dir": "../fman.io/media",
-	"server_media_dir": "/home/fman/src/media",
-	"server_user": "fman@fman.io",
-	"ssh_key": "conf/ssh/id_rsa",
 	"files_to_filter": [
 		"src/build/docker/arch/Dockerfile",
 		"src/build/docker/ubuntu/Dockerfile",
@@ -26,30 +20,21 @@
 		"src/build/docker/fedora/.rpmmacros"
 	],
 	"public_settings": ["environment", "server_url"],
-	"gpg_key": "45BCC825BC281C06D2A7F912B015FE599CFAF7EB",
-	"gpg_name": "Michael Herrmann",
-	"gpg_pass": "fenst4r",
-	"aws_access_key_id": "AKIAIWTB3R6KKMMTWXEA",
-	"aws_secret_access_key": "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",
-	"aws_bucket": "fman",
-	"aws_distribution_id": "E36JGR8Q7NMYHR",
-	"core_plugin_github_url": "git@github.com:fman-users/Core.git",
-	"core_plugin_ssh_key": "conf/ssh/id_rsa-Core",
 	"core_plugin_in_freeze_dir": "${freeze_dir}/Plugins/Core",
 	"docker_images": {
 		"arch": {
 			"build_files": [
-				"src/sign/linux/", "conf/ssh/", "requirements/"
+				"requirements/"
 			]
 		},
 		"ubuntu": {
 			"build_files": [
-				"src/sign/linux/", "conf/ssh/", "requirements/"
+				"requirements/"
 			]
 		},
 		"fedora": {
 			"build_files": [
-				"src/sign/linux/", "requirements/"
+				"requirements/"
 			]
 		}
 	},
