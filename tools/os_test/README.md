@@ -15,7 +15,7 @@ sorting by a click on a header, or the `..` entry.
 |------|---------|
 | `click_test.py` | The driver. It needs `pyobjc-framework-Quartz` and `pyobjc-framework-ApplicationServices`. |
 | `SortProbe/` | A probe plugin. It writes the window layout to a JSON file every 200 ms. |
-| `requirements.txt` | The dependency of the driver. |
+| `requirements.txt` | The dependencies of the driver. |
 | `test_click_test.py` | Unit tests for the helpers of the driver. They need no GUI. |
 
 The probe plugin writes the layout of the window: the panes, the folder URLs,
@@ -117,7 +117,9 @@ The driver never clicks "OK". On the configuration alert, OK opens a browser.
 
 - macOS only.
 - The terminal needs an Accessibility permission. Without it, the CGEvent
-  calls do nothing.
+  calls do nothing and the hit test fails. The driver then stops with the
+  error "The terminal has no Accessibility permission", also with
+  `--dry-run`.
 - The Qt coordinates and the CGEvent coordinates are in points, with the origin
   at the top left of the primary screen. Retina scaling does not change them.
   The test passed with the window on the primary screen and on a second

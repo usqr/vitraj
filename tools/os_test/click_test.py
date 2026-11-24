@@ -10,7 +10,8 @@ sure that the click had its result and that no pane changed its folder.
 Run the app with an isolated HOME. See README.md.
 
 The script needs a macOS Accessibility permission for the terminal. Without
-it, the clicks and the hit test do nothing.
+it, the clicks do nothing and the hit test fails. The script then stops with
+an error, also with --dry-run.
 """
 
 from ApplicationServices import (
@@ -100,9 +101,18 @@ def check_process(pid):
 		raise Failed('pid %d is %r, not vitraj.' % (pid, name))
 	return name
 
+# The AXError of a terminal without the Accessibility permission:
+_AX_API_DISABLED = -25211
+
+def _ax_failed(error, x, y):
+	if error == _AX_API_DISABLED:
+		return Failed('The terminal has no Accessibility permission.')
+	return Failed('The hit test at (%d, %d) failed (AXError %d).' % (x, y, error))
+
 def pid_at(x, y):
 	"""
-	Return the pid of the app that gets a click at (x, y), or None.
+	Return the pid of the app that gets a click at (x, y). Raise Failed if the
+	hit test fails.
 
 	Use the Accessibility hit test, not the list of windows. The list of
 	windows also contains overlays that do not take clicks, for example the
@@ -112,9 +122,11 @@ def pid_at(x, y):
 		AXUIElementCreateSystemWide(), x, y, None
 	)
 	if error:
-		return None
+		raise _ax_failed(error, x, y)
 	error, pid = AXUIElementGetPid(element, None)
-	return None if error else pid
+	if error:
+		raise _ax_failed(error, x, y)
+	return pid
 
 def _post_click(x, y):
 	for event_type in (
@@ -146,11 +158,13 @@ class Clicker:
 	def click(self, rect, label):
 		"""Return the time of the click."""
 		x, y = center(rect)
-		self._check_window(x, y, label)
 		if self.dry_run:
+			self._check_window(x, y, label)
 			print('  would click %s at (%d, %d)' % (label, x, y))
 			return time.time()
 		self._wait_for_double_click_time(x, y)
+		# Do the check after the wait. A window can open during the wait.
+		self._check_window(x, y, label)
 		click_time = time.time()
 		_post_click(x, y)
 		self._last = (x, y, click_time)
@@ -158,9 +172,10 @@ class Clicker:
 		print('  clicked %s at (%d, %d)' % (label, x, y))
 		return click_time
 	def _check_window(self, x, y, label):
-		owner = pid_at(x, y)
-		if owner is None:
-			raise Failed('%s: no app gets a click at (%d, %d).' % (label, x, y))
+		try:
+			owner = pid_at(x, y)
+		except Failed as e:
+			raise Failed('%s: %s' % (label, e)) from e
 		if owner != self._pid:
 			name = os.path.basename(_process_name(owner)) or '?'
 			raise Failed(

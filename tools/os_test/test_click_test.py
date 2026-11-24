@@ -73,34 +73,52 @@ class PopupStepTest(TestCase):
 
 class PidAtTest(TestCase):
 	def _hit(self, element_error, pid_error=0, pid=42):
+		self.calls = []
+		def copy_element(*args):
+			self.calls.append(('copy', args))
+			return element_error, 'element'
+		def get_pid(*args):
+			self.calls.append(('pid', args))
+			return pid_error, pid
 		with patch.object(ct, 'AXUIElementCreateSystemWide', lambda: 'system'), \
-				patch.object(
-					ct, 'AXUIElementCopyElementAtPosition',
-					lambda *_: (element_error, 'element')
-				), \
-				patch.object(ct, 'AXUIElementGetPid', lambda *_: (pid_error, pid)):
+				patch.object(ct, 'AXUIElementCopyElementAtPosition', copy_element), \
+				patch.object(ct, 'AXUIElementGetPid', get_pid):
 			return ct.pid_at(10, 20)
 	def test_returns_the_pid_of_the_element(self):
 		self.assertEqual(42, self._hit(0))
-	def test_none_if_no_element(self):
-		self.assertIsNone(self._hit(-25204))
-	def test_none_if_no_pid(self):
-		self.assertIsNone(self._hit(0, pid_error=-25202))
+		self.assertEqual(
+			[('copy', ('system', 10, 20, None)), ('pid', ('element', None))],
+			self.calls
+		)
+	def test_fails_if_no_element(self):
+		with self.assertRaisesRegex(ct.Failed, 'AXError -25204'):
+			self._hit(-25204)
+	def test_fails_if_no_pid(self):
+		with self.assertRaisesRegex(ct.Failed, 'AXError -25202'):
+			self._hit(0, pid_error=-25202)
+	def test_names_the_missing_permission(self):
+		with self.assertRaisesRegex(ct.Failed, 'no Accessibility permission'):
+			self._hit(-25211)
 
 class CheckWindowTest(TestCase):
-	def _check(self, owner):
+	def _check(self, owner, name='/System/Dock'):
 		clicker = ct.Clicker(7, False, 500, [])
-		with patch.object(ct, 'pid_at', lambda x, y: owner), \
-				patch.object(ct, '_process_name', lambda pid: '/System/Dock'):
+		with patch.object(ct, 'pid_at', owner), \
+				patch.object(ct, '_process_name', lambda pid: name):
 			clicker._check_window(1, 2, 'button')
 	def test_passes_if_vitraj_gets_the_click(self):
-		self._check(7)
+		self._check(lambda x, y: 7)
 	def test_fails_if_another_app_gets_the_click(self):
 		with self.assertRaisesRegex(ct.Failed, 'goes to Dock'):
-			self._check(99)
-	def test_fails_if_no_app_gets_the_click(self):
-		with self.assertRaises(ct.Failed):
-			self._check(None)
+			self._check(lambda x, y: 99)
+	def test_unknown_name_if_the_other_app_exited(self):
+		with self.assertRaisesRegex(ct.Failed, r'goes to \? \(pid 99\)'):
+			self._check(lambda x, y: 99, name='')
+	def test_adds_the_label_if_the_hit_test_fails(self):
+		def fail(x, y):
+			raise ct.Failed('The hit test failed.')
+		with self.assertRaisesRegex(ct.Failed, '^button: The hit test failed'):
+			self._check(fail)
 
 class ParentRowTest(TestCase):
 	def _pane(self, rows):
