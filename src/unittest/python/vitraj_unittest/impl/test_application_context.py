@@ -14,9 +14,13 @@ class OnMainWindowShownTest(TestCase):
 		self._call(context)
 		context.tutorial_factory.assert_not_called()
 		context.tour_controller.start.assert_not_called()
-	def _context(self, is_first_run):
+	def test_starts_the_updater(self):
+		context = self._context(is_first_run=False, updater=MagicMock())
+		self._call(context)
+		context.updater.start.assert_called_once_with()
+	def _context(self, is_first_run, updater=None):
 		return SimpleNamespace(
-			updater=None,
+			updater=updater,
 			session_manager=SimpleNamespace(is_first_run=is_first_run),
 			plugin_support=MagicMock(get_panes=lambda: ['pane']),
 			tutorial_factory=MagicMock(return_value='tutorial'),

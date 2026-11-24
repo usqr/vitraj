@@ -18,11 +18,9 @@ class SettingsTest(TestCase):
 		self.assertEqual(3, settings.pop('a', 3))
 	def setUp(self):
 		super().setUp()
-		self._tmp_dir = TemporaryDirectory()
-		self._path = join(self._tmp_dir.name, 'Settings.json')
-	def tearDown(self):
-		self._tmp_dir.cleanup()
-		super().tearDown()
+		tmp_dir = TemporaryDirectory()
+		self.addCleanup(tmp_dir.cleanup)
+		self._path = join(tmp_dir.name, 'Settings.json')
 	def _write(self, data):
 		with open(self._path, 'w') as f:
 			json.dump(data, f)
