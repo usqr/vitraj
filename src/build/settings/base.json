@@ -25,7 +25,7 @@
 		"src/build/docker/fedora/Dockerfile",
 		"src/build/docker/fedora/.rpmmacros"
 	],
-	"public_settings": ["environment", "server_url", "sentry_dsn"],
+	"public_settings": ["environment", "server_url"],
 	"gpg_key": "45BCC825BC281C06D2A7F912B015FE599CFAF7EB",
 	"gpg_name": "Michael Herrmann",
 	"gpg_pass": "fenst4r",
@@ -33,7 +33,6 @@
 	"aws_secret_access_key": "JRNCpqdUC6+b4OtSgLahgKNjWujXqz1a4hnowQXE",
 	"aws_bucket": "fman",
 	"aws_distribution_id": "E36JGR8Q7NMYHR",
-	"sentry_dsn": "https://f944652cced046819c66201136195f85@sentry.fman.io/2",
 	"core_plugin_github_url": "git@github.com:fman-users/Core.git",
 	"core_plugin_ssh_key": "conf/ssh/id_rsa-Core",
 	"core_plugin_in_freeze_dir": "${freeze_dir}/Plugins/Core",

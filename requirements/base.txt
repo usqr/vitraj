@@ -1,6 +1,4 @@
-fbs[sentry] @ https://build-system.fman.io/pro/b5aab865-bd29-4f23-992c-0eb4f3a24f33/0.9.4
-# vitraj.impl.util.sentry needs get_global_scope (2.12+). Do a test before you allow 4.
-sentry-sdk>=2.12,<4
+fbs @ https://build-system.fman.io/pro/b5aab865-bd29-4f23-992c-0eb4f3a24f33/0.9.4
 PyQt5==5.15.11
 PyInstaller==6.19.0
 tinycss==0.4
