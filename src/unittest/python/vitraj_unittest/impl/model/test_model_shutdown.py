@@ -142,3 +142,22 @@ class WorkerKwargsTest(TestCase):
 		worker.submit(1, lambda a, b=None: got.append((a, b)), 1, b=2)
 		worker.shutdown()
 		self.assertEqual([(1, 2)], got)
+
+class TransactionAfterShutdownTest(TestCase):
+	def test_queued_transaction_does_not_run_after_shutdown(self):
+		# A transaction passed the caller-side check, then the model shut
+		# down before the worker ran it. It must not touch the fs any more.
+		from threading import Event
+		cleared = []
+		fs = _SpyFileSystem()
+		fs.clear_cache = cleared.append
+		model = Model(fs, 'stub://dir', [Column()])
+		model._worker.start()
+		release = Event()
+		model._worker.submit(1, release.wait)
+		model.reload()
+		model._shutdown = True
+		release.set()
+		sleep(.2)
+		self.assertEqual([], cleared)
+		model._worker.submit(1, model._worker.shutdown)

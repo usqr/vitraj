@@ -21,12 +21,17 @@ def transaction(priority, synchronous=False):
 		def result(self, *args, **kwargs):
 			if self._shutdown:
 				return
+			def guarded():
+				# Check again in the worker thread: the model can shut down
+				# after the check above but before the worker runs the task.
+				if not self._shutdown:
+					f(self, *args, **kwargs)
 			if synchronous:
 				assert not is_in_main_thread()
 				has_run = Event()
 				def task():
 					try:
-						f(self, *args, **kwargs)
+						guarded()
 					finally:
 						# Also on an error. Else the caller waits forever:
 						has_run.set()
@@ -34,7 +39,7 @@ def transaction(priority, synchronous=False):
 				if self._worker.submit(priority, task):
 					has_run.wait()
 			else:
-				self._worker.submit(priority, f, self, *args, **kwargs)
+				self._worker.submit(priority, guarded)
 		return result
 	return decorator
 
