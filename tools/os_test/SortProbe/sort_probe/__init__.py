@@ -7,10 +7,9 @@ data to find the click points and to see which popups are open.
 Do not install this plugin for normal use.
 """
 
-from PyQt5.QtCore import QPoint, QTimer, Qt
-from PyQt5.QtWidgets import (
-	QAbstractButton, QApplication, QFrame, QLabel, QMessageBox
-)
+from PySide6.QtCore import QPoint, QTimer, Qt
+from PySide6.QtWidgets import QAbstractButton, QApplication, QFrame, QLabel, \
+	QMessageBox
 from vitraj import DirectoryPaneListener
 
 import json

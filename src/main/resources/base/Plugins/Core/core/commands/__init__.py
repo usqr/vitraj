@@ -19,8 +19,8 @@ from itertools import chain
 from os import strerror
 from os.path import basename, pardir
 from pathlib import PurePath
-from PyQt5.QtCore import QUrl
-from PyQt5.QtGui import QDesktopServices
+from PySide6.QtCore import QUrl
+from PySide6.QtGui import QDesktopServices
 from subprocess import Popen, DEVNULL, PIPE
 from tempfile import TemporaryDirectory
 from urllib.error import URLError

@@ -11,14 +11,17 @@ from vitraj.impl.view.gallery import GalleryView, GalleryItemDelegate
 from vitraj.impl.view.thumbnails import ThumbnailCache
 from vitraj.url import as_human_readable, basename
 from os.path import join
-from PyQt5.QtCore import pyqtSignal, QTimer, Qt, QEvent, QSize
-from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QWidget, QMainWindow, QSplitter, QStatusBar, \
+from PySide6.QtCore import QKeyCombination, Signal, QTimer, Qt, QEvent, QSize
+from PySide6.QtGui import QKeySequence
+from PySide6.QtWidgets import QLayout, QWidget, QMainWindow, QSplitter, QStatusBar, \
 	QMessageBox, QInputDialog, QLineEdit, QFileDialog, QLabel, QDialog, \
 	QHBoxLayout, QPushButton, QVBoxLayout, QSplitterHandle, QApplication, \
-	QFrame, QAction, QSizePolicy, QProgressDialog, QProgressBar
+	QFrame, QSizePolicy, QProgressDialog, QProgressBar
+from PySide6.QtGui import QAction
 
 import re
+
+_Button = QMessageBox.StandardButton
 
 VIEW_MODE_LIST = 'list'
 VIEW_MODE_GALLERY = 'gallery'
@@ -53,8 +56,8 @@ class Application(QApplication):
 
 class DirectoryPaneWidget(QWidget):
 
-	location_changed = pyqtSignal(QWidget)
-	location_bar_clicked = pyqtSignal(QWidget)
+	location_changed = Signal(QWidget)
+	location_bar_clicked = Signal(QWidget)
 
 	def __init__(self, fs, null_location, parent, controller, thumbnail_cache):
 		super().__init__(parent)
@@ -431,9 +434,9 @@ class PanelManager:
 
 class MainWindow(QMainWindow):
 
-	shown = pyqtSignal()
-	closed = pyqtSignal()
-	before_dialog = pyqtSignal(QDialog)
+	shown = Signal()
+	closed = Signal()
+	before_dialog = Signal(QDialog)
 
 	def __init__(
 		self, app, help_menu_actions, theme, progress_bar_palette, fs,
@@ -631,7 +634,7 @@ class MainWindow(QMainWindow):
 
 class MessageBox(QMessageBox):
 
-	shown = pyqtSignal()
+	shown = Signal()
 
 	def __init__(self, parent, allow_escape=True):
 		super().__init__(parent)
@@ -645,12 +648,12 @@ class MessageBox(QMessageBox):
 			# We do have to perform these steps _here_ because self.button(...)
 			# returns None when called from the constructor.
 			for button, shortcut in (
-				(self.Yes, Qt.Key_Y), (self.No, Qt.Key_N),
-				(self.YesToAll, Qt.Key_A), (self.NoToAll, Qt.Key_O)
+				(_Button.Yes, Qt.Key_Y), (_Button.No, Qt.Key_N),
+				(_Button.YesToAll, Qt.Key_A), (_Button.NoToAll, Qt.Key_O)
 			):
 				if buttons & button:
 					self.button(button).setShortcut(
-						QKeySequence(Qt.CTRL + shortcut)
+						QKeySequence(QKeyCombination(Qt.ControlModifier, shortcut))
 					)
 	def keyPressEvent(self, event):
 		if self._allow_escape or event.key() != Key_Escape:
@@ -686,7 +689,7 @@ class Prompt(QInputDialog):
 	at the correct position. This sets `hscroll` to the required value.
 	"""
 
-	shown = pyqtSignal()
+	shown = Signal()
 
 	def __init__(
 		self, parent, title, text, default='', selection_start=0,
@@ -770,7 +773,7 @@ class Overlay(QFrame):
 
 		# The following two lines prevent the label from being "cut off" at the
 		# bottom under some circumstances:
-		layout.setSizeConstraint(layout.SetMinAndMaxSize)
+		layout.setSizeConstraint(QLayout.SizeConstraint.SetMinAndMaxSize)
 		self.label.setSizePolicy(
 			QSizePolicy.MinimumExpanding, QSizePolicy.Minimum
 		)

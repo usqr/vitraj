@@ -11,7 +11,7 @@ from io import UnsupportedOperation
 from os import remove, rmdir
 from os.path import islink, samestat, isabs, splitdrive
 from pathlib import Path
-from PyQt5.QtCore import QFileSystemWatcher
+from PySide6.QtCore import QFileSystemWatcher
 from shutil import copystat
 from stat import S_ISDIR, S_IWRITE
 

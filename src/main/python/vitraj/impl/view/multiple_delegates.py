@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableView, QStyledItemDelegate
+from PySide6.QtWidgets import QTableView, QStyledItemDelegate
 
 class MultipleDelegates(QTableView):
 	""" Let a QTableView have multiple ItemDelegates. """

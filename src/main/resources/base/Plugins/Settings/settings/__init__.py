@@ -1,9 +1,9 @@
 from vitraj import DirectoryPaneCommand, DirectoryPaneListener, load_json, \
 	save_json, show_status_message, PLATFORM
-from PyQt5.QtCore import Qt, QTimer, QEvent
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, \
-	QScrollArea, QSizePolicy, QFrame, QPushButton, QCheckBox, \
-	QSpinBox, QLineEdit, QFileDialog, QComboBox, QApplication
+from PySide6.QtCore import Qt, QTimer, QEvent
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, \
+	QScrollArea, QSizePolicy, QFrame, QPushButton, QCheckBox, QSpinBox, \
+	QLineEdit, QFileDialog, QComboBox, QApplication
 
 import os
 

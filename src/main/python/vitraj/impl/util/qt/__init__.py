@@ -1,7 +1,7 @@
 from vitraj.impl.util.platform_ import is_windows
 from vitraj.url import splitscheme, as_human_readable, as_url
 from pathlib import PureWindowsPath
-from PyQt5.QtCore import Qt, QObject, QEvent, QUrl
+from PySide6.QtCore import Qt, QObject, QEvent, QUrl
 
 def connect_once(signal, slot):
 	def _connect_once(*args, **kwargs):
@@ -134,3 +134,13 @@ CopyAction = Qt.CopyAction
 MoveAction = Qt.MoveAction
 IgnoreAction = Qt.IgnoreAction
 NoButton = Qt.NoButton
+
+def view_item_option(view):
+	"""
+	The default QStyleOptionViewItem of the given item view. Qt 6 removed
+	QAbstractItemView#viewOptions(); this is its replacement.
+	"""
+	from PySide6.QtWidgets import QStyleOptionViewItem
+	result = QStyleOptionViewItem()
+	view.initViewItemOption(result)
+	return result

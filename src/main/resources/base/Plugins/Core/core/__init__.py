@@ -4,7 +4,7 @@ from datetime import datetime
 from vitraj.fs import Column
 from vitraj.url import basename
 from math import log
-from PyQt5.QtCore import QLocale, QDateTime
+from PySide6.QtCore import QLocale, QDateTime
 
 import vitraj.fs
 import re

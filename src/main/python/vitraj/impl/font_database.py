@@ -1,5 +1,5 @@
 from vitraj.impl.util.qt.thread import run_in_main_thread
-from PyQt5.QtGui import QFontDatabase
+from PySide6.QtGui import QFontDatabase
 
 class FontError(RuntimeError):
 	pass

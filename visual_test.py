@@ -22,15 +22,15 @@ import traceback
 from threading import Thread, Event
 from pathlib import Path
 
-# Set up paths before importing vitraj/PyQt5
+# Set up paths before importing vitraj/PySide6
 _PROJECT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_PROJECT_DIR / 'src' / 'main' / 'python'))
 sys.path.insert(0, str(_PROJECT_DIR / 'src' / 'main' / 'resources' / 'base' / 'Plugins' / 'Core'))
 os.environ.setdefault('PYTHONPATH', '')
 
-from PyQt5.QtCore import Qt
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QWidget
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
+from PySide6.QtWidgets import QWidget
 
 SCREENSHOT_DIR = _PROJECT_DIR / 'target' / 'screenshots'
 
@@ -71,7 +71,7 @@ class TestHarness:
         self._ready.set()
 
         # Run the event loop (blocks until app quits)
-        return self._app.exec_()
+        return self._app.exec()
 
     def wait_ready(self, timeout=30):
         """Wait for the app to be ready."""

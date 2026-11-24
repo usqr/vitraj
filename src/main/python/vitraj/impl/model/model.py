@@ -8,8 +8,8 @@ from vitraj.impl.util.qt import EditRole
 from vitraj.impl.util.qt.thread import run_in_main_thread, is_in_main_thread
 from vitraj.url import join, dirname
 from functools import wraps, lru_cache
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Signal, Qt
+from PySide6.QtGui import QIcon, QPixmap
 from threading import Event
 from time import time
 
@@ -60,9 +60,9 @@ class Model(SortFilterTableModel, DragAndDrop):
 	of these operations represents an atomic update of data.
 	"""
 
-	location_loaded = pyqtSignal(str)
-	file_renamed = pyqtSignal(str, str)
-	location_disappeared = pyqtSignal(str)
+	location_loaded = Signal(str)
+	file_renamed = Signal(str, str)
+	location_disappeared = Signal(str)
 
 	def __init__(
 		self, fs, location, columns, sort_column=0, ascending=True,

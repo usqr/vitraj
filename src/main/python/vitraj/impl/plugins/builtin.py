@@ -3,7 +3,7 @@ from vitraj.fs import FileSystem, Column
 from vitraj.impl.plugins.plugin import Plugin
 from vitraj.impl.util import filenotfounderror
 from vitraj.impl.util.qt.thread import run_in_main_thread
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 
 class BuiltinPlugin(Plugin):
 	def __init__(

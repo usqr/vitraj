@@ -1,6 +1,6 @@
 from vitraj.impl.model.model import Model
 from vitraj.fs import Column
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from unittest import TestCase
 
 from time import sleep

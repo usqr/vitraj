@@ -3,9 +3,9 @@ from vitraj.impl.util.qt.thread import run_in_main_thread
 from vitraj.url import splitscheme, basename, as_human_readable
 from collections import namedtuple
 from file_preview._async import AsyncRunner, Debouncer
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPixmap, QFont, QImage, QImageReader
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPlainTextEdit, \
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QFont, QImage, QImageReader
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPlainTextEdit, \
 	QStackedWidget, QScrollArea, QSizePolicy, QApplication
 
 from functools import lru_cache

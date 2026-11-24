@@ -1,7 +1,8 @@
-from vitraj.impl.util.qt import DisplayRole, EditRole, ToolTipRole, DecorationRole
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, QVariant
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QTableView
+from vitraj.impl.util.qt import view_item_option, DisplayRole, EditRole, \
+	ToolTipRole, DecorationRole
+from PySide6.QtCore import QAbstractTableModel, QModelIndex
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QTableView
 
 class UniformRowHeights(QTableView):
 	"""
@@ -84,7 +85,7 @@ class UniformRowHeights(QTableView):
 				return y_abs // row_height
 	def _get_cell_heights(self, row=0):
 		self.ensurePolished()
-		option = self.viewOptions()
+		option = view_item_option(self)
 		model = self.model()
 		dummy_model = DummyModel(
 			model.rowCount(), model.columnCount(), option.decorationSize
@@ -121,7 +122,7 @@ class DummyModel(QAbstractTableModel):
 		return self._num_cols
 	def data(self, index, role=DisplayRole):
 		if role in (DisplayRole, EditRole, ToolTipRole):
-			return QVariant('')
+			return ''
 		elif role == DecorationRole:
 			return QPixmap(self.decoration_size)
-		return QVariant()
+		return None

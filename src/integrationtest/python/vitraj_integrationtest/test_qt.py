@@ -22,8 +22,8 @@ from vitraj.impl.util.qt.thread import run_in_thread
 from vitraj_integrationtest.impl.model.test___init__ import \
 	SortedFileSystemModelAT
 from vitraj_integrationtest.impl.util.qt.test_thread import RunInThreadAT
-from PyQt5.QtCore import pyqtSignal, Qt, qInstallMessageHandler
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtCore import Signal, Qt, qInstallMessageHandler
+from PySide6.QtWidgets import QApplication
 from threading import Event
 from unittest import TestCase, skipIf
 
@@ -70,7 +70,7 @@ class _QtApp:
 		cls._app = _Application([])
 		cls._app.running.connect(callback, Qt.QueuedConnection)
 		cls._app.running.emit()
-		cls._app.exec_()
+		cls._app.exec()
 	@classmethod
 	def _qt_message_handler(cls, msg_type, context, msg):
 		if msg == 'WARNING: QApplication was not created in the main() thread.':
@@ -86,4 +86,4 @@ class _QtApp:
 # QApplication. But this produces segmentation faults when we try to instantiate
 # QPixmaps. So use the more "complete" QApplication:
 class _Application(QApplication):
-	running = pyqtSignal()
+	running = Signal()

@@ -15,10 +15,10 @@ for _plugin in ('File Preview', 'File Preview PDF'):
 	if join(_PLUGINS, _plugin) not in sys.path:
 		sys.path.append(join(_PLUGINS, _plugin))
 
-from PyQt5.QtCore import QSize, Qt # noqa: E402
-from PyQt5.QtGui import QImage # noqa: E402
-from PyQt5.QtTest import QTest # noqa: E402
-from PyQt5.QtWidgets import QApplication # noqa: E402
+from PySide6.QtCore import QSize, Qt # noqa: E402
+from PySide6.QtGui import QImage # noqa: E402
+from vitraj_unittest.qt_wait import qwait # noqa: E402
+from PySide6.QtWidgets import QApplication # noqa: E402
 
 from file_preview import PreviewWidget, PreviewImage, _directory_info, \
 	_load_qt_image, _LOADING_DELAY_MS # noqa: E402
@@ -32,7 +32,7 @@ _app = QApplication.instance() or QApplication([])
 def _wait_until(condition, timeout_ms=3000):
 	waited = 0
 	while not condition() and waited < timeout_ms:
-		QTest.qWait(10)
+		qwait(10)
 		waited += 10
 	return condition()
 
@@ -58,7 +58,7 @@ class DebouncerTest(TestCase):
 		self.debouncer('a')
 		self.debouncer('b')
 		self.debouncer.cancel()
-		QTest.qWait(60)
+		qwait(60)
 		self.assertEqual(['a'], self.calls)
 
 class AsyncRunnerTest(TestCase):
@@ -77,7 +77,7 @@ class AsyncRunnerTest(TestCase):
 		self.runner.run(lambda: 'old', self.results.append)
 		self.runner.run(lambda: 'new', self.results.append)
 		self.assertTrue(_wait_until(lambda: self.results))
-		QTest.qWait(30)
+		qwait(30)
 		self.assertEqual(['new'], self.results)
 	def test_cancel_after_finished_job(self):
 		self.runner.run(lambda: 1, self.results.append)
@@ -93,13 +93,13 @@ class AsyncRunnerTest(TestCase):
 		other.cancel()
 		release.set()
 		self.runner.wait()
-		QTest.qWait(30)
+		qwait(30)
 		self.assertEqual([], ran)
 	def test_cancel_drops_result(self):
 		self.runner.run(lambda: 'x', self.results.append)
 		self.runner.cancel()
 		self.runner.wait()
-		QTest.qWait(30)
+		qwait(30)
 		self.assertEqual([], self.results)
 
 class LoadQtImageTest(TestCase):
@@ -153,7 +153,7 @@ class PreviewWidgetTest(TestCase):
 		with TemporaryDirectory() as tmp_dir:
 			Path(tmp_dir, 'a.txt').write_text('x')
 			self.widget.show_preview(as_url(tmp_dir))
-			QTest.qWait(_LOADING_DELAY_MS + 100)
+			qwait(_LOADING_DELAY_MS + 100)
 		self.assertIn('Directory', self.widget._fallback.text())
 	def test_directory_preview(self):
 		with TemporaryDirectory() as tmp_dir:
@@ -188,7 +188,7 @@ class PreviewWidgetTest(TestCase):
 			text.write_text('text')
 			self.widget.show_preview(as_url(str(slow)))
 			self.widget.show_preview(as_url(str(text)))
-			QTest.qWait(500)
+			qwait(500)
 		self.assertEqual('b.txt', self.widget._header.text())
 		self.assertEqual('text', self._text())
 	def _image_shown(self):
@@ -257,12 +257,12 @@ class _SpyPane:
 
 class RunnerDeletedTest(TestCase):
 	def test_result_after_delete_is_dropped(self):
-		import sip
+		import shiboken6
 		release = Event()
 		results = []
 		runner = AsyncRunner()
 		runner.run(release.wait, results.append)
-		sip.delete(runner)
+		shiboken6.delete(runner)
 		release.set()
-		QTest.qWait(100)
+		qwait(100)
 		self.assertEqual([], results)

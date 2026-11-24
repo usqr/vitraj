@@ -6,9 +6,9 @@ from vitraj.impl.html_style import highlight
 from vitraj.impl.util.qt import Key_Up
 from os.path import dirname, basename, join
 from pathlib import PurePath
-from PyQt5.QtCore import QEvent, QUrl
-from PyQt5.QtGui import QDesktopServices
-from PyQt5.QtWidgets import QDialog, QLabel, QVBoxLayout, QRadioButton, \
+from PySide6.QtCore import QEvent, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import QDialog, QLabel, QVBoxLayout, QRadioButton, \
 	QLineEdit, QDialogButtonBox, QCheckBox
 
 class NonexistentShortcutHandler:

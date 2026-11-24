@@ -50,21 +50,25 @@ def _strip_unused_from_bundle():
 				os.unlink(dir_path)
 			elif os.path.isdir(dir_path):
 				rmtree(dir_path)
-	# Remove unused Qt frameworks (fman only uses Core, Gui, Widgets,
-	# MacExtras, PrintSupport, Svg):
-	qt_lib = join(frameworks, 'PyQt5', 'Qt5', 'lib')
+	# Remove unused Qt frameworks. vitraj uses Core, Gui, Widgets, Network
+	# and Svg. PDF previews use PyMuPDF, not QtPdf. Remove each framework
+	# together with the plugin that needs it (see below):
+	qt_lib = join(frameworks, 'PySide6', 'Qt', 'lib')
 	for unused_fw in (
-		'QtQml', 'QtQmlModels', 'QtQuick', 'QtWebSockets'
+		'QtQml', 'QtQmlModels', 'QtQuick', 'QtWebSockets', 'QtPdf',
+		'QtVirtualKeyboard', 'QtVirtualKeyboardQml', 'QtQmlMeta',
+		'QtQmlWorkerScript'
 	):
 		fw_path = join(qt_lib, unused_fw + '.framework')
 		if os.path.isdir(fw_path):
 			rmtree(fw_path)
 	# Remove unused Qt platform plugins:
-	qt_plugins = join(frameworks, 'PyQt5', 'Qt5', 'plugins')
+	qt_plugins = join(frameworks, 'PySide6', 'Qt', 'plugins')
 	for unused_plugin in (
 		'platforms/libqwebgl.dylib', 'platforms/libqminimal.dylib',
 		'platforms/libqoffscreen.dylib', 'bearer', 'generic',
-		'platformthemes'
+		'platformthemes', 'imageformats/libqpdf.dylib',
+		'platforminputcontexts'
 	):
 		p = join(qt_plugins, unused_plugin)
 		if os.path.isdir(p):

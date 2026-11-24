@@ -1,9 +1,11 @@
 from vitraj.impl.model.table import TableModel
-from PyQt5.QtCore import Qt, pyqtSignal
+from PySide6.QtCore import QAbstractItemModel, Qt, Signal
+
+_VERTICAL_SORT = QAbstractItemModel.LayoutChangeHint.VerticalSortHint
 
 class SortFilterTableModel(TableModel):
 
-	sort_order_changed = pyqtSignal(int, int)
+	sort_order_changed = Signal(int, int)
 
 	def __init__(
 		self, column_headers, sort_column=0, ascending=True, filters=None
@@ -46,7 +48,7 @@ class SortFilterTableModel(TableModel):
 		ascending = order == Qt.AscendingOrder
 		if (column, ascending) == (self._sort_column, self._sort_ascending):
 			return
-		self.layoutAboutToBeChanged.emit([], self.VerticalSortHint)
+		self.layoutAboutToBeChanged.emit([], _VERTICAL_SORT)
 		self._sort_column = column
 		self._sort_ascending = ascending
 		new_rows = self._sorted(self._rows)
@@ -59,8 +61,8 @@ class SortFilterTableModel(TableModel):
 					)
 					break
 		self._rows.reset_to(new_rows)
-		self.layoutChanged.emit([], self.VerticalSortHint)
-		self.sort_order_changed.emit(column, order)
+		self.layoutChanged.emit([], _VERTICAL_SORT)
+		self.sort_order_changed.emit(column, Qt.SortOrder(order).value)
 	def add_filter(self, filter_):
 		self._filters.append(filter_)
 		self.update()

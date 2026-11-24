@@ -1,10 +1,10 @@
 """
 Helpers that keep slow preview work off the main thread.
 """
-import sip
+import shiboken6
 import weakref
 
-from PyQt5.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal
+from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal
 
 class Debouncer(QObject):
 	"""
@@ -96,7 +96,7 @@ class _Relay(QObject):
 	and lives until the app exits. So the worker never emits a signal of
 	an object that Qt deletes at the same time (when the panel closes).
 	"""
-	done = pyqtSignal(object, int, object) # (weakref to runner, token, result)
+	done = Signal(object, int, object) # (weakref to runner, token, result)
 
 def _shared_relay():
 	"""Call this in the main thread first, so the relay lives there."""
@@ -108,7 +108,7 @@ def _shared_relay():
 
 def _deliver(runner_ref, token, result):
 	runner = runner_ref()
-	if runner is None or sip.isdeleted(runner):
+	if runner is None or not shiboken6.isValid(runner):
 		return
 	try:
 		runner._on_done(token, result)

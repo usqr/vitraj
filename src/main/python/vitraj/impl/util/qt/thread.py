@@ -1,6 +1,6 @@
 from functools import wraps
-from PyQt5.QtCore import pyqtSignal, QObject, QThread
-from PyQt5.QtWidgets import QApplication
+from PySide6.QtCore import Signal, QObject, QThread
+from PySide6.QtWidgets import QApplication
 from threading import Event, get_ident, Lock
 
 def run_in_thread(thread_fn):
@@ -107,7 +107,7 @@ class Task:
 		return self._result
 
 class Sender(QObject):
-	signal = pyqtSignal()
+	signal = Signal()
 
 class Receiver(QObject):
 	def __init__(self, callback, parent=None):

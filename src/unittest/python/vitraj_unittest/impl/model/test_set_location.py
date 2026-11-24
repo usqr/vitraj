@@ -3,8 +3,8 @@ from vitraj.impl.plugins.builtin import NullFileSystem, NullColumn
 from vitraj.impl.plugins.mother_fs import MotherFileSystem
 from vitraj.impl.util.qt.thread import is_in_main_thread
 from vitraj_unittest.impl.model import StubFileSystem
-from PyQt5.QtTest import QTest
-from PyQt5.QtWidgets import QApplication
+from vitraj_unittest.qt_wait import qwait
+from PySide6.QtWidgets import QApplication
 from unittest import TestCase
 
 import sys
@@ -71,7 +71,7 @@ class SetLocationTest(TestCase):
 	def test_later_call_wins(self):
 		self.model.set_location('stub://dir')
 		self.model.set_location('stub://')
-		QTest.qWait(200)
+		qwait(200)
 		self.assertEqual('stub://', self.model.get_location())
 	def test_parent_error_goes_up(self):
 		self.assertEqual(
@@ -97,7 +97,7 @@ class SetLocationTest(TestCase):
 def _wait_until(condition, timeout_ms=3000):
 	waited = 0
 	while not condition() and waited < timeout_ms:
-		QTest.qWait(10)
+		qwait(10)
 		waited += 10
 	return bool(condition())
 

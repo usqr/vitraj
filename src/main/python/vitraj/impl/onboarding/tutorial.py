@@ -9,8 +9,8 @@ from os.path import expanduser, relpath, realpath, splitdrive, basename, \
 	normpath, dirname
 from pathlib import PurePath
 from platform import mac_ver
-from PyQt5.QtCore import QFileInfo
-from PyQt5.QtWidgets import QFileDialog
+from PySide6.QtCore import QFileInfo
+from PySide6.QtWidgets import QFileDialog
 from time import time, sleep
 
 import vitraj.url
