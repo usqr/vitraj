@@ -428,19 +428,20 @@ class ExitPreview(DirectoryPaneCommand):
 
 class PreviewModeListener(DirectoryPaneListener):
 	def on_path_changed(self):
-		w = self.pane.window
-		active = w.get_active_panel(self.pane)
-		if active and active[0] == _PANEL_ID:
-			file_url = self.pane.get_file_under_cursor()
-			# vitraj calls listeners in a background thread. The preview
-			# uses widgets and QTimers, so it must run in the main thread:
-			_show_preview_in_main_thread(active[1], file_url)
+		# vitraj calls listeners in a background thread. The preview uses
+		# widgets and QTimers, so it must run in the main thread:
+		_update_preview(self.pane)
 
 
 @run_in_main_thread
-def _show_preview_in_main_thread(widget, file_url):
+def _update_preview(pane):
+	# Read the panel and the cursor in this same main-thread task. Else a
+	# cursor move between two tasks could show a stale file.
+	active = pane.window.get_active_panel(pane)
+	if not active or active[0] != _PANEL_ID:
+		return
 	try:
-		widget.show_preview(file_url)
+		active[1].show_preview(pane.get_file_under_cursor())
 	except RuntimeError:
 		# Qt deleted the widget in the meantime (the panel was closed).
 		pass

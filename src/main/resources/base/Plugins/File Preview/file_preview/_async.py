@@ -1,6 +1,9 @@
 """
 Helpers that keep slow preview work off the main thread.
 """
+import sip
+import weakref
+
 from PyQt5.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal
 
 class Debouncer(QObject):
@@ -43,15 +46,13 @@ class AsyncRunner(QObject):
 	which does not support concurrent use from more than one thread.
 	"""
 
-	_done = pyqtSignal(int, object)
-
 	def __init__(self, parent=None):
 		super().__init__(parent)
 		self._pool = _shared_pool()
+		self._relay = _shared_relay()
 		self._job = None
 		self._token = 0
 		self._callback = None
-		self._done.connect(self._on_done)
 	def run(self, fn, on_result):
 		"""
 		Call fn() in the worker thread. Then call on_result(result) in this
@@ -60,7 +61,11 @@ class AsyncRunner(QObject):
 		self.cancel()
 		token = self._token
 		self._callback = on_result
-		self._job = _Job(fn, lambda result: self._emit(token, result))
+		runner = weakref.ref(self)
+		relay = self._relay
+		self._job = _Job(
+			fn, lambda result: relay.done.emit(runner, token, result)
+		)
 		self._pool.start(self._job)
 	def cancel(self):
 		self._token += 1
@@ -76,12 +81,6 @@ class AsyncRunner(QObject):
 			self._job = None
 	def wait(self, msecs=-1):
 		return self._pool.waitForDone(msecs)
-	def _emit(self, token, result):
-		try:
-			self._done.emit(token, result)
-		except RuntimeError:
-			# The C++ object was deleted (the preview panel was closed).
-			pass
 	def _on_done(self, token, result):
 		if token != self._token or self._callback is None:
 			return
@@ -89,6 +88,33 @@ class AsyncRunner(QObject):
 		callback(result)
 
 _POOL = None
+_RELAY = None
+
+class _Relay(QObject):
+	"""
+	Carries results from the worker to the main thread. It has no parent
+	and lives until the app exits. So the worker never emits a signal of
+	an object that Qt deletes at the same time (when the panel closes).
+	"""
+	done = pyqtSignal(object, int, object) # (weakref to runner, token, result)
+
+def _shared_relay():
+	"""Call this in the main thread first, so the relay lives there."""
+	global _RELAY
+	if _RELAY is None:
+		_RELAY = _Relay()
+		_RELAY.done.connect(_deliver)
+	return _RELAY
+
+def _deliver(runner_ref, token, result):
+	runner = runner_ref()
+	if runner is None or sip.isdeleted(runner):
+		return
+	try:
+		runner._on_done(token, result)
+	except RuntimeError:
+		# Qt deleted the runner or the preview widget (the panel closed).
+		pass
 
 def _shared_pool():
 	"""
