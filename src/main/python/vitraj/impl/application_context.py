@@ -2,7 +2,7 @@ from fbs_runtime import application_context as fbs_appctxt
 from fbs_runtime.application_context import cached_property
 from fbs_runtime.application_context.PyQt5 import ApplicationContext
 from fbs_runtime.excepthook import StderrExceptionHandler
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj import PLATFORM, DATA_DIRECTORY, Window
 from vitraj.impl.controller import Controller
 from vitraj.impl.font_database import FontDatabase

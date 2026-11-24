@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows, is_mac, is_linux
+from vitraj.impl.util.platform_ import is_windows, is_mac, is_linux
 
 import platform
 

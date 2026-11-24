@@ -2,7 +2,7 @@ from . import clipboard
 from .url import dirname
 from .impl.task import StubProgressDialog, ChildProgressDialog
 from contextlib import contextmanager
-from fbs_runtime import platform
+from vitraj.impl.util import platform_ as platform
 from os import getenv
 from os.path import join, expanduser
 from PyQt5.QtWidgets import QMessageBox

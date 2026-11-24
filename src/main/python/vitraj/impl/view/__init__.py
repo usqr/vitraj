@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt import WA_MacShowFocusRect, Key_Home, Key_End, \
 	ShiftModifier, Key_Return, Key_Enter, ToolTipRole, connect_once
 from vitraj.impl.view.context_menu import ContextMenuMixin

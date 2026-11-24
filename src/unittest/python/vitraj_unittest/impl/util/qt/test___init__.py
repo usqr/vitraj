@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.impl.util.qt import as_qurl, from_qurl
 from unittest import TestCase
 

@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.impl.onboarding.tutorial import _get_navigation_steps
 from vitraj.url import as_url, basename, dirname, as_human_readable, join
 from pathlib import PurePath

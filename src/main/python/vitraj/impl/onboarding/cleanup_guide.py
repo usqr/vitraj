@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.onboarding import Tour, TourStep
 from vitraj.url import basename
 

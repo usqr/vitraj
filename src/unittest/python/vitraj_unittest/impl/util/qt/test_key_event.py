@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt.key_event import QtKeyEvent
 from PyQt5.QtCore import Qt
 from unittest import TestCase

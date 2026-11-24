@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj import show_alert, YES, NO, run_application_command, load_json, \
 	save_json, DATA_DIRECTORY, unload_plugin, load_plugin
 from vitraj.fs import is_dir
