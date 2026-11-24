@@ -208,7 +208,7 @@ Note: `".."` parent dir entries are always passed through filters at the model l
 - Custom themes are stored in `Custom Theme.json` (active theme) and `Saved Themes.json` (named presets)
 - Theme files use `.fman-theme` extension: `{"fman_theme": 1, "name": "...", "colors": {"key": "#hex"}}`
 - Colors are applied via QPalette updates + QSS overrides (marker-delimited block in the app stylesheet)
-- `_THEME_ELEMENTS` defines all 21 themeable color keys (including `alternate_bg`) with defaults from `styles.qss`
+- `_THEME_ELEMENTS` defines all 24 themeable color keys (including `alternate_bg`) with defaults from `styles.qss`
 - `InitThemeListener` applies saved custom theme on startup (deferred 500ms + retry for plugin compatibility)
 - Panels use `Qt.WA_StyledBackground` to inherit theme colors from QSS `*` rules
 - The Settings panel integrates with FmanAlternativeColors plugin for theme switching
