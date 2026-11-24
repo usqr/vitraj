@@ -1,10 +1,8 @@
 Mac:
 ====
 
-Import developer certificate:
-
-    security unlock-keychain -p **PASSWORD**
-    security import "~/dev/fman/conf/mac/Private key.p12" -k ~/Library/Keychains/login.keychain -P "" -T /usr/bin/codesign
+Code signing: the release workflow imports the Developer ID certificate from
+the APPLE_CERTIFICATE_P12 GitHub secret. See "Release pipeline" in AGENTS.md.
 
 Install a version of XCode that is compatible with your macOS version from
 https://developer.apple.com/download/more/?q=xcode.

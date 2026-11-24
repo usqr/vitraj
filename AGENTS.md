@@ -270,3 +270,6 @@ residue on the runner (which itself is also destroyed).
       asset is just `vitraj.dmg`, no per-version `.zip` is uploaded.
 - [ ] Cross-platform — workflow is mac-only. Linux/Windows freezes exist
       (`build_impl/{ubuntu,arch,fedora,windows}.py`) but aren't wired up.
+      The fman signing keys were removed: Linux packages and Windows
+      installers need new keys (kept in GitHub secrets, not in the repo)
+      before `sign_installer` can work on those platforms.

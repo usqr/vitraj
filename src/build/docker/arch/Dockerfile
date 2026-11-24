@@ -21,27 +21,13 @@ RUN rm -rf /tmp/requirements/
 
 ADD .bashrc /root/.bashrc
 
-# Import GPG key for code signing the installer:
-ADD private-key.gpg public-key.gpg /tmp/
-RUN gpg -q --batch --yes --passphrase ${gpg_pass} --import /tmp/private-key.gpg /tmp/public-key.gpg && \
-    rm /tmp/private-key.gpg /tmp/public-key.gpg
 
 ADD gpg-agent.conf /root/.gnupg/gpg-agent.conf
 RUN gpgconf --kill gpg-agent
 
 RUN pacman -S --noconfirm p7zip
 
-RUN pacman -S --noconfirm git && \
-    git config --global user.email "michael@herrmann.io" && \
-    git config --global user.name "Michael Herrmann"
-
-ADD id_rsa /root/.ssh/id_rsa
-RUN chmod 600 /root/.ssh/id_rsa
-ADD id_rsa.pub /root/.ssh/id_rsa.pub
-RUN pacman -S --noconfirm openssh && \
-    ssh-keyscan -H github.com >> ~/.ssh/known_hosts && \
-    ssh-keyscan -H fman.io >> ~/.ssh/known_hosts && \
-    chmod 600 ~/.ssh/known_hosts
+RUN pacman -S --noconfirm git
 
 RUN pacman -S --noconfirm rsync
 

@@ -37,21 +37,8 @@ ADD gpg-agent.conf gpg.conf /root/.gnupg/
 # Avoid GPG warning "unsafe permissions":
 RUN chmod -R 600 /root/.gnupg/
 RUN apt-get install reprepro gnupg-agent gnupg2 -y
-ADD private-key.gpg public-key.gpg /tmp/
-RUN gpg -q --batch --yes --passphrase ${gpg_pass} --import /tmp/private-key.gpg /tmp/public-key.gpg && \
-    rm /tmp/private-key.gpg /tmp/public-key.gpg
 
-ADD id_rsa /root/.ssh/id_rsa
-RUN chmod 600 /root/.ssh/id_rsa
-ADD id_rsa.pub /root/.ssh/id_rsa.pub
-RUN apt-get install openssh-client -y && \
-    ssh-keyscan -H github.com >> ~/.ssh/known_hosts && \
-    ssh-keyscan -H fman.io >> ~/.ssh/known_hosts && \
-    chmod 600 ~/.ssh/known_hosts
-
-RUN apt-get install git -y && \
-    git config --global user.email "michael@herrmann.io" && \
-    git config --global user.name "Michael Herrmann"
+RUN apt-get install git -y
 
 RUN apt-get install locales -y && \
     locale-gen en_US.UTF-8

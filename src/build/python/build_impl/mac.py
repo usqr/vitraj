@@ -1,9 +1,7 @@
-from build_impl import copy_framework, SETTINGS, copy_python_library, \
-	upload_file, upload_installer_to_aws
+from build_impl import copy_framework
 from fbs import path
 from fbs.cmdline import command
 from fbs.freeze.mac import freeze_mac
-from glob import glob
 from os import remove
 from os.path import join
 from shutil import rmtree, move
@@ -11,7 +9,6 @@ from subprocess import run
 
 import os
 
-_UPDATES_DIR = 'updates/mac'
 
 @command
 def freeze():
@@ -179,20 +176,6 @@ def sign_installer():
 	_run_codesign(dmg_path)
 	_notarize(dmg_path)
 	_staple(dmg_path)
-
-@command
-def upload():
-	_zip_mac(
-		path('${freeze_dir}'),
-		path('target/autoupdate/%s.zip' % SETTINGS['version'])
-	)
-	upload_file(
-		path('target/autoupdate/%s.zip' % SETTINGS['version']), _UPDATES_DIR
-	)
-	for patch_file in glob(path('target/autoupdate/*.delta')):
-		upload_file(patch_file, _UPDATES_DIR)
-	if SETTINGS['release']:
-		upload_installer_to_aws('vitraj.dmg')
 
 def _zip_mac(src_dir, dest_zip):
 	run([
