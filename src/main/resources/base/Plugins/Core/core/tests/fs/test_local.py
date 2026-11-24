@@ -2,6 +2,7 @@ from collections import namedtuple
 from vitraj import PLATFORM
 from vitraj.url import join, as_url, splitscheme
 from core import LocalFileSystem
+from core.fs.local import _COPY_BUFFER_SIZE
 from pathlib import Path
 from stat import S_IWRITE, S_ISLNK
 from tempfile import TemporaryDirectory
@@ -132,6 +133,14 @@ class LocalFileSystemTest(TestCase):
 			self.assertFalse(b.exists(), 'Failed to delete symlink to folder')
 	def test_copy_file(self):
 		self._test_transfer_file(self._fs.copy, deletes_src=False)
+	def test_copy_file_larger_than_buffer(self):
+		with TemporaryDirectory() as tmp_dir:
+			src = Path(tmp_dir, 'src')
+			contents = bytes(range(256)) * (_COPY_BUFFER_SIZE // 128 + 1)
+			src.write_bytes(contents)
+			dst = Path(tmp_dir, 'dst')
+			self._fs.copy(as_url(src), as_url(dst))
+			self.assertEqual(contents, dst.read_bytes())
 	def test_move_file(self):
 		self._test_transfer_file(self._fs.move, deletes_src=True)
 	def _test_transfer_file(self, transfer_fn, deletes_src):
