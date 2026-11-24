@@ -30,13 +30,15 @@ except ImportError:
 
 
 def _show_pdf(widget, path):
+	# The worker imports PyMuPDF (~400 ms) at the first use:
+	widget.show_image_async(lambda: _render_pdf(path), 'Cannot render PDF')
+
+
+def _render_pdf(path):
 	fitz = _load_fitz()
 	if fitz is None:
-		widget._show_message('PDF preview requires PyMuPDF.\n\npip install PyMuPDF')
-		return
-	widget.show_image_async(
-		lambda: _render_first_page(fitz, path), 'Cannot render PDF'
-	)
+		raise ImportError('PDF preview requires PyMuPDF (pip install PyMuPDF)')
+	return _render_first_page(fitz, path)
 
 
 def _render_first_page(fitz, path):

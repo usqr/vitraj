@@ -98,7 +98,10 @@ def _load_image(path, ext, max_size):
 	size = _file_size(path)
 	return PreviewImage(image, '%d x %d px  |  %s' % (w, h, _format_size(size)))
 
-def _load_pillow_image(pil_image, path, max_size):
+def _load_pillow_image(path, max_size):
+	pil_image = _pil_image()
+	if pil_image is None:
+		raise ImportError('AVIF preview requires Pillow (pip install Pillow)')
 	with pil_image.open(path) as img:
 		w, h = img.width, img.height
 		img.thumbnail((max_size.width(), max_size.height()))
@@ -232,6 +235,10 @@ class PreviewWidget(QWidget):
 		if file_url == self._last_url:
 			return
 		self._last_url = file_url
+		# Drop the result of the previous file at once. Else it could show
+		# (with its header) under the new file until the debounced render:
+		self._runner.cancel()
+		self._loading_timer.stop()
 		if file_url is not None:
 			self._header.setText(basename(file_url))
 		self._render_debounced(file_url)
@@ -282,6 +289,8 @@ class PreviewWidget(QWidget):
 		if file_url is None:
 			self._show_message('No file selected')
 			return
+		# A handler (for example PDF) can change the header. Reset it:
+		self._header.setText(basename(file_url))
 		scheme, _ = splitscheme(file_url)
 		if scheme != 'file://':
 			self._show_message('Preview not available for %s' % scheme)
@@ -323,14 +332,9 @@ class PreviewWidget(QWidget):
 			self._show_message('Cannot read file: %s' % e)
 
 	def _show_pillow_image(self, path):
-		pil_image = _pil_image()
-		if pil_image is None:
-			self._show_message('AVIF preview requires Pillow.\n\npip install Pillow')
-			return
 		max_size = _max_image_size(self)
-		self.show_image_async(
-			lambda: _load_pillow_image(pil_image, path, max_size)
-		)
+		# The worker imports Pillow (~150 ms) at the first use:
+		self.show_image_async(lambda: _load_pillow_image(path, max_size))
 
 	def _show_image(self, path, ext=None):
 		max_size = _max_image_size(self)
