@@ -6,7 +6,6 @@ from fbs_runtime.platform import is_mac
 from vitraj import PLATFORM, DATA_DIRECTORY, Window
 from vitraj.impl.controller import Controller
 from vitraj.impl.font_database import FontDatabase
-from vitraj.impl.licensing import User
 from vitraj.impl.metrics import Metrics, ServerBackend, AsynchronousMetrics, \
 	LoggingBackend
 from vitraj.impl.model.icon_provider import GnomeFileIconProvider, \
@@ -34,7 +33,7 @@ from vitraj.impl.util.qt import connect_once
 from vitraj.impl.util.sentry import SentryExceptionHandler
 from vitraj.impl.util.settings import Settings
 from vitraj.impl.view import ProxyStyle
-from vitraj.impl.widgets import MainWindow, SplashScreen, Application
+from vitraj.impl.widgets import MainWindow, Application
 from os import makedirs
 from os.path import dirname, join
 from PyQt5.QtCore import Qt
@@ -104,19 +103,10 @@ class DevelopmentApplicationContext(ApplicationContext):
 			self._preload_core_services()
 		if self.updater:
 			self.updater.start()
-		if self.is_licensed:
-			if not self.session_manager.was_licensed_on_last_run:
-				self.metrics.track('InstalledLicenseKey')
-				self.metrics.update_user(
-					is_licensed=True, email=self.user.email
-				)
-		else:
-			if self.session_manager.is_first_run:
-				pane = self.plugin_support.get_panes()[0]
-				tutorial = self.tutorial_factory(pane)
-				self.tour_controller.start(tutorial)
-			else:
-				self.splash_screen.exec()
+		if self.session_manager.is_first_run:
+			pane = self.plugin_support.get_panes()[0]
+			tutorial = self.tutorial_factory(pane)
+			self.tour_controller.start(tutorial)
 	def _preload_core_services(self):
 		from threading import Thread
 		def _load():
@@ -182,7 +172,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 			self.app.set_main_window(self._main_window)
 		return self._main_window
 	def _get_main_window_title(self):
-		return 'vitraj' if self.is_licensed else 'vitraj – NOT REGISTERED'
+		return 'vitraj'
 	@cached_property
 	def help_menu_actions(self):
 		if is_mac():
@@ -236,16 +226,6 @@ class DevelopmentApplicationContext(ApplicationContext):
 	@cached_property
 	def config(self):
 		return Config(PLATFORM)
-	@cached_property
-	def splash_screen(self):
-		user = self.user
-		license_expired = user.has_license() and \
-						  not user.license_is_valid_for_curr_version(
-							  self.fman_version
-						  )
-		return SplashScreen(
-			self.main_window, self.app, license_expired, user.email
-		)
 	@cached_property
 	def tour_controller(self):
 		return TourController()
@@ -370,23 +350,6 @@ class DevelopmentApplicationContext(ApplicationContext):
 		)
 		return result
 	@cached_property
-	def user(self):
-		json_path = self._get_local_data_file('User.json')
-		try:
-			with open(json_path, 'r') as f:
-				data = json.load(f)
-		except (IOError, ValueError):
-			data = {}
-		if not isinstance(data, dict):
-			# Malformed User.json file:
-			data = {}
-		email = data.get('email', '')
-		key = data.get('key', '')
-		return User(email, key)
-	@cached_property
-	def is_licensed(self):
-		return self.user.is_licensed(self.fman_version)
-	@cached_property
 	def main_window_palette(self):
 		result = QPalette(self.palette)
 		result.setColor(QPalette.Window, QColor(0x44, 0x44, 0x44))
@@ -407,7 +370,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 		settings = Settings(self._get_local_data_file('Session.json'))
 		return SessionManager(
 			settings, self.mother_fs, self.plugin_error_handler,
-			self.fman_version, self.is_licensed
+			self.fman_version
 		)
 	@cached_property
 	def theme(self):
@@ -511,8 +474,6 @@ class FrozenApplicationContext(DevelopmentApplicationContext):
 		if not is_mac():
 			# On Windows and Linux, auto-updates are handled by external
 			# technologies. No need for fman itself to update:
-			return False
-		if not self.user.is_entitled_to_updates():
 			return False
 		try:
 			with open(join(DATA_DIRECTORY, 'Local', 'Updates.json'), 'r') as f:

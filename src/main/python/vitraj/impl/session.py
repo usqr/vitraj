@@ -20,16 +20,12 @@ class SessionManager:
 	DEFAULT_NUM_PANES = 2
 	_MAIN_WINDOW_VERSION = 1
 
-	def __init__(self, settings, fs, error_handler, fman_version, is_licensed):
+	def __init__(self, settings, fs, error_handler, fman_version):
 		self.is_first_run = not settings
 		self._settings = settings
 		self._fs = fs
 		self._error_handler = error_handler
 		self._fman_version = fman_version
-		self._is_licensed = is_licensed
-	@property
-	def was_licensed_on_last_run(self):
-		return self._settings.get('is_licensed', False)
 	def show_main_window(self, window):
 		main_window = window._widget
 		self._restore_window_geometry(main_window)
@@ -172,7 +168,6 @@ class SessionManager:
 		self._settings['panes'] = \
 			list(map(self._read_pane_settings, main_window.get_panes()))
 		self._settings['fman_version'] = self._fman_version
-		self._settings['is_licensed'] = self._is_licensed
 		try:
 			self._settings.flush()
 		except OSError:
