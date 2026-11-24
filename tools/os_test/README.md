@@ -133,7 +133,8 @@ new state after a click. Thus it could click the position of a closed popup
 again, and the file list was below that position.
 
 A test on 2026-11-24 proved this cause. The test clicked the button of the
-license splash screen (removed later), and then clicked the same point 4 more times:
+license splash screen (removed in PR #38), and then clicked the same point 4
+more times:
 
 | Gap between the clicks | Result |
 |------------------------|--------|
