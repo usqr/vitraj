@@ -53,16 +53,28 @@ class GetApplicationContextTest(TestCase):
 		first = app_context_base.get_application_context(_Dev)
 		self.assertIs(first, app_context_base.get_application_context(_Dev))
 
-class FbsBuildAdapterTest(TestCase):
-	def test_source_settings_have_version_and_app_name(self):
-		from vitraj.impl.fbs_build import load_build_settings
-		settings = load_build_settings()
-		self.assertIn('version', settings)
+class BuildSettingsTest(TestCase):
+	def test_source_settings_are_public_only(self):
+		ctx = _ctx_with_dirs([])
+		settings = ApplicationContext.build_settings.fget(ctx)
 		self.assertEqual('vitraj', settings['app_name'])
+		self.assertIn('version', settings)
+		self.assertNotIn('freeze_dir', settings)
+	def test_frozen_settings_come_from_the_resource_file(self):
+		import json
+		with TemporaryDirectory() as resources:
+			with open(os.path.join(resources, 'build_settings.json'), 'w') as f:
+				json.dump({'version': '9.9.9'}, f)
+			ctx = _ctx_with_dirs([resources])
+			with patch.object(sys, 'frozen', True, create=True):
+				settings = ApplicationContext.build_settings.fget(ctx)
+		self.assertEqual({'version': '9.9.9'}, settings)
 	def test_source_resource_dirs_start_with_base(self):
-		from vitraj.impl.fbs_build import get_source_resource_dirs
-		dirs = get_source_resource_dirs()
+		class Ctx(ApplicationContext):
+			pass
+		dirs = ApplicationContext._resource_dirs.fget(Ctx.__new__(Ctx))
 		self.assertTrue(dirs[0].endswith(os.path.join('resources', 'base')))
+		self.assertTrue(dirs[-1].endswith(os.path.join('main', 'icons')))
 
 class _Dev:
 	pass

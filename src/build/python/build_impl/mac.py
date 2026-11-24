@@ -1,18 +1,17 @@
 from build_impl import copy_framework
-from fbs import path
-from fbs.cmdline import command
-from fbs.freeze.mac import freeze_mac
-from os import remove
-from os.path import join
-from shutil import rmtree, move
+from build_impl.freeze import generate_resources, run_pyinstaller
+from build_impl.settings import SETTINGS, path
+from glob import glob
+from os import makedirs, remove, unlink
+from os.path import basename, exists, join, splitext
+from shutil import copy, rmtree, move
 from subprocess import run
 
 import os
 
 
-@command
 def freeze():
-	freeze_mac()
+	_freeze_app()
 	rmtree(path('${core_plugin_in_freeze_dir}/bin/linux'))
 	rmtree(path('${core_plugin_in_freeze_dir}/bin/windows'))
 	# Open Sans is only used on Linux. Further, it fails to load on some users'
@@ -95,7 +94,6 @@ def _assert_bundle_is_arm64():
 				'which Apple is removing.' % (binary, ' '.join(archs) or 'none')
 			)
 
-@command
 def sign():
 	app_dir = path('${freeze_dir}')
 	sparkle_dir = join(app_dir, 'Contents/Frameworks/Sparkle.framework')
@@ -170,7 +168,6 @@ def _require_env(name):
 		)
 	return value
 
-@command
 def sign_installer():
 	dmg_path = path('target/vitraj.dmg')
 	_run_codesign(dmg_path)
@@ -183,3 +180,45 @@ def _zip_mac(src_dir, dest_zip):
 		src_dir,
 		dest_zip
 	], check=True)
+
+def _freeze_app():
+	"""PyInstaller, then the resources. This replaces fbs's freeze_mac."""
+	if not exists(path('target/Icon.icns')):
+		_generate_iconset()
+		run(['iconutil', '-c', 'icns', path('target/Icon.iconset')], check=True)
+	args = ['--icon', path('target/Icon.icns')]
+	bundle_identifier = SETTINGS.get('mac_bundle_identifier')
+	if bundle_identifier:
+		args.extend(['--osx-bundle-identifier', bundle_identifier])
+	run_pyinstaller(args)
+	_remove_unwanted_pyinstaller_files()
+	generate_resources()
+
+def _generate_iconset():
+	makedirs(path('target/Icon.iconset'), exist_ok=True)
+	for (size, scale), icon_path in _get_icons().items():
+		dest_name = 'icon_%dx%d' % (size, size)
+		if scale != 1:
+			dest_name += '@%dx' % scale
+		copy(icon_path, path('target/Icon.iconset/' + dest_name + '.png'))
+
+def _get_icons():
+	"""{(size, scale): path}. Later icon dirs override earlier ones."""
+	result = {}
+	for profile in ('base', 'mac'):
+		for icon_path in glob(path('src/main/icons/%s/*.png' % profile)):
+			name = splitext(basename(icon_path))[0]
+			size, _, scale = name.partition('@')
+			result[(int(size), int(scale.rstrip('x') or '1'))] = icon_path
+	return result
+
+def _remove_unwanted_pyinstaller_files():
+	for unwanted in ('include', 'lib', 'lib2to3'):
+		try:
+			unlink(path('${freeze_dir}/Contents/MacOS/' + unwanted))
+		except FileNotFoundError:
+			pass
+		try:
+			rmtree(path('${freeze_dir}/Contents/Resources/' + unwanted))
+		except FileNotFoundError:
+			pass

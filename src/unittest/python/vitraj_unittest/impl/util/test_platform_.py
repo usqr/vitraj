@@ -12,9 +12,8 @@ class NameTest(TestCase):
 	def test_unknown_raises(self):
 		with self.assertRaises(RuntimeError):
 			platform_.name('sunos5')
-	def test_same_as_fbs_runtime(self):
-		from fbs_runtime import platform as fbs_platform
-		self.assertEqual(fbs_platform.name(), platform_.name())
+	def test_current_platform_is_known(self):
+		self.assertIn(platform_.name(), ('Windows', 'Mac', 'Linux'))
 
 class DesktopTest(TestCase):
 	def test_gnome(self):

@@ -1,4 +1,0 @@
-{
-	"hidden_imports": ["pgi.overrides.GObject", "pgi.overrides.GLib"],
-	"gpg_preset_passphrase": "/usr/lib/gnupg2/gpg-preset-passphrase"
-}

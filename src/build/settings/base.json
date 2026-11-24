@@ -8,35 +8,16 @@
 	"main_module": "src/main/python/vitraj/main.py",
 	"freeze_dir": "target/${app_name}",
 	"test_dirs": [
+		"src/unittest/python",
+		"src/integrationtest/python",
 		"src/main/resources/base/Plugins/Core"
 	],
 	"release": false,
 	"environment": "local",
 	"server_url": "http://127.0.0.1:8000",
-	"files_to_filter": [
-		"src/build/docker/arch/Dockerfile",
-		"src/build/docker/ubuntu/Dockerfile",
-		"src/build/docker/fedora/Dockerfile",
-		"src/build/docker/fedora/.rpmmacros"
-	],
-	"public_settings": ["environment", "server_url"],
+	"public_settings": ["app_name", "author", "version", "environment", "server_url"],
 	"core_plugin_in_freeze_dir": "${freeze_dir}/Plugins/Core",
-	"docker_images": {
-		"arch": {
-			"build_files": [
-				"requirements/"
-			]
-		},
-		"ubuntu": {
-			"build_files": [
-				"requirements/"
-			]
-		},
-		"fedora": {
-			"build_files": [
-				"requirements/"
-			]
-		}
-	},
+	"extra_pyinstaller_args": [],
+
 	"hidden_imports": ["requests", "fitz", "pymupdf", "PIL", "Foundation", "send2trash"]
 }

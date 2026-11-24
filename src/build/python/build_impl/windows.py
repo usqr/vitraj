@@ -1,14 +1,14 @@
 from build_impl import copy_python_library
-from fbs import path
-from fbs.cmdline import command
-from fbs.freeze.windows import freeze_windows
+from build_impl.freeze import generate_resources, run_pyinstaller
+from build_impl.settings import path
 from os import remove
 from os.path import join, dirname
 from shutil import copy, rmtree
 
-@command
 def freeze():
-	freeze_windows()
+	run_pyinstaller(['--icon', path('src/main/icons/Icon.ico')])
+	generate_resources()
+	copy(path('src/main/icons/Icon.ico'), path('${freeze_dir}'))
 	_copy_winpty_files()
 	rmtree(path('${core_plugin_in_freeze_dir}/bin/mac'))
 	rmtree(path('${core_plugin_in_freeze_dir}/bin/linux'))
