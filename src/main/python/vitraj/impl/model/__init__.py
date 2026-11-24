@@ -174,9 +174,11 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		# the model may start loading files with the wrong filter.
 		new_model.start(callback)
 	def setSourceModel(self, model):
-		# Qt does not own the source model. Keep a Python reference, so that
-		# Python does not delete it while the proxy uses it:
-		self._source_model = model
+		# Make this proxy the Qt parent of the model. Then C++ owns it, and
+		# Python never deletes it, also not in a worker thread. The model
+		# deletes itself in the main thread when it shuts down (see
+		# Model#_shutdown_async):
+		model.setParent(self)
 		super().setSourceModel(model)
 	def row_is_loaded(self, i):
 		source_row = self.mapToSource(self.index(i, 0)).row()

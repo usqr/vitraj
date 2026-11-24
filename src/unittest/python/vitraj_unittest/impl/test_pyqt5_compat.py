@@ -57,3 +57,23 @@ class PyQt5CompatTest(TestCase):
 			[sys.executable, '-c', code], capture_output=True, text=True
 		)
 		self.assertEqual(0, result.returncode, result.stderr)
+
+class PyQt5CompatQVariantTest(PyQt5CompatTest):
+	def test_qvariant_as_signal_slot_and_property_type(self):
+		self._run(
+			'from PyQt5.QtCore import QObject, QVariant, pyqtSignal',
+			'from PyQt5.QtCore import pyqtSlot, pyqtProperty',
+			'from PyQt5.QtWidgets import QApplication',
+			'app = QApplication([])',
+			'class C(QObject):',
+			'    changed = pyqtSignal(QVariant)',
+			'    @pyqtSlot(QVariant)',
+			'    def on(self, value): self.got = value',
+			'    value = pyqtProperty(QVariant, lambda self: 7)',
+			'c = C()',
+			'c.changed.connect(c.on)',
+			'c.changed.emit({"a": 1})',
+			'assert c.got == {"a": 1}, c.got',
+			'assert c.value == 7',
+			'assert not isinstance(3, QVariant)'
+		)

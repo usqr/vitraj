@@ -1,7 +1,9 @@
 from functools import wraps
 from PySide6.QtCore import Signal, QObject, QThread
 from PySide6.QtWidgets import QApplication
-from threading import Event, get_ident, Lock
+from threading import Event, Lock
+
+import threading
 
 def run_in_thread(thread_fn):
 	def decorator(f):
@@ -17,7 +19,7 @@ def _main_thread():
 	if app:
 		return app.thread()
 	# We reach here in tests that don't (want to) create a QApplication.
-	if int(QThread.currentThreadId()) == get_ident():
+	if threading.current_thread() is threading.main_thread():
 		return QThread.currentThread()
 	raise RuntimeError('Could not determine main thread')
 

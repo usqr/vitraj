@@ -8,7 +8,7 @@ from vitraj.impl.util.qt import EditRole
 from vitraj.impl.util.qt.thread import run_in_main_thread, is_in_main_thread
 from vitraj.url import join, dirname
 from functools import wraps, lru_cache
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import QMetaObject, Signal, Qt
 from PySide6.QtGui import QIcon, QPixmap
 from threading import Event
 from time import time
@@ -435,6 +435,9 @@ class Model(SortFilterTableModel, DragAndDrop):
 			# For example, clear_cache(...) raises FileNotFoundError when the
 			# plugin of the location's scheme was unloaded. Stop anyway:
 			self._worker.shutdown()
+			# Delete this model in its own (the main) thread, after the
+			# worker is done with it. This does not block the worker:
+			QMetaObject.invokeMethod(self, 'deleteLater', Qt.QueuedConnection)
 
 _NOT_LOADED = object()
 

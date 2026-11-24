@@ -161,3 +161,15 @@ class TransactionAfterShutdownTest(TestCase):
 		sleep(.2)
 		self.assertEqual([], cleared)
 		model._worker.submit(1, model._worker.shutdown)
+
+class ModelDeletedInMainThreadTest(TestCase):
+	def test_model_is_deleted_after_shutdown(self):
+		from vitraj_unittest.qt_wait import qwait
+		import shiboken6
+		model = Model(_SpyFileSystem(), 'stub://dir', [Column()])
+		model._worker.start()
+		model.shutdown()
+		model._worker._thread.join(5)
+		self.assertTrue(shiboken6.isValid(model))
+		qwait(50)
+		self.assertFalse(shiboken6.isValid(model))

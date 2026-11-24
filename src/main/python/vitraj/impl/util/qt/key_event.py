@@ -34,10 +34,10 @@ class QtKeyEvent:
 		result = ''
 		if self.modifiers:
 			result += QKeySequence(_value(self.modifiers)).toString()
-		for key in [k for k in dir(Qt) if k.startswith('Key_')]:
-			if self.key == getattr(Qt, key):
-				result += key[len('Key_'):]
-				break
+		# PySide6 gives unknown keys a name like '305419896', not 'Key_...':
+		name = Qt.Key(self.key).name
+		if name.startswith('Key_'):
+			result += name[len('Key_'):]
 		else:
 			result += '0x%02x' % self.key
 		return result

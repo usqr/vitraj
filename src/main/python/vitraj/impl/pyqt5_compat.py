@@ -59,16 +59,35 @@ def _public(module):
 	return [key for key in vars(module) if not key.startswith('_')]
 
 def _add_pyqt5_names(qt_core):
-	qt_core.pyqtSignal = Signal
-	qt_core.pyqtSlot = Slot
-	qt_core.pyqtProperty = Property
-	qt_core.QVariant = _qvariant
+	qt_core.pyqtSignal = _pyqt_signal
+	qt_core.pyqtSlot = _pyqt_slot
+	qt_core.pyqtProperty = _pyqt_property
+	qt_core.QVariant = QVariant
 	qt_core.QT_VERSION_STR = qVersion()
 	qt_core.PYQT_VERSION_STR = '5.15 (vitraj PySide6 compatibility)'
 
-def _qvariant(value=None):
-	"""PySide6 has no QVariant. Plain Python values take its place."""
-	return value
+class QVariant:
+	"""
+	PySide6 has no QVariant. Plain Python values take its place:
+	QVariant(x) gives x. As a type (for example pyqtSignal(QVariant)), it
+	means `object`.
+	"""
+	def __new__(cls, value=None):
+		return value
+
+def _to_pyside_type(type_):
+	if isinstance(type_, (list, tuple)):
+		return type(type_)(_to_pyside_type(t) for t in type_)
+	return object if type_ is QVariant or type_ == 'QVariant' else type_
+
+def _pyqt_signal(*types, **kwargs):
+	return Signal(*(_to_pyside_type(t) for t in types), **kwargs)
+
+def _pyqt_slot(*types, **kwargs):
+	return Slot(*(_to_pyside_type(t) for t in types), **kwargs)
+
+def _pyqt_property(type_, *args, **kwargs):
+	return Property(_to_pyside_type(type_), *args, **kwargs)
 
 def _add_moved_classes():
 	qt_gui = sys.modules.get('PyQt5.QtGui')
