@@ -1,5 +1,5 @@
 from contextlib import contextmanager
-from fbs_runtime.platform import is_linux
+from vitraj.impl.util.platform_ import is_linux
 from vitraj.impl.model import SortedFileSystemModel
 from vitraj.impl.plugins.builtin import NullFileSystem, NullColumn
 from vitraj.impl.plugins.mother_fs import MotherFileSystem

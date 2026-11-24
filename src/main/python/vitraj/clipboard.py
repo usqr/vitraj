@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_linux, is_windows, is_gnome_based, \
+from vitraj.impl.util.platform_ import is_linux, is_windows, is_gnome_based, \
 	is_kde_based
 from vitraj.impl.util.qt import as_qurl, from_qurl
 from vitraj.impl.util.qt.thread import run_in_main_thread

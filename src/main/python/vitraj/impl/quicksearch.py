@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt import Key_Tab, Key_Down, Key_Up, Key_PageDown, \
 	Key_Home, Key_End, Key_PageUp, UserRole, AlignRight, AlignVCenter, \
 	NoFocus, FramelessWindowHint, AlignTop, AccessibleTextRole

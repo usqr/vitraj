@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.impl.util import is_below_dir
 from os.path import join
 from unittest import TestCase, skipIf

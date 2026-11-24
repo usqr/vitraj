@@ -1,5 +1,5 @@
-from fbs_runtime.application_context import is_frozen
-from fbs_runtime.excepthook import ExceptionHandler
+from vitraj.impl.app_context_base import is_frozen
+from vitraj.impl.util.excepthook import ExceptionHandler
 from vitraj.impl.theme import ThemeError
 from vitraj.impl.util import is_below_dir
 from os.path import dirname, basename

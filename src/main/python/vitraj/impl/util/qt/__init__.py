@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.url import splitscheme, as_human_readable, as_url
 from pathlib import PureWindowsPath
 from PyQt5.QtCore import Qt, QObject, QEvent, QUrl

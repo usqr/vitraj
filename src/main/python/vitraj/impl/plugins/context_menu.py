@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.plugins.util import describe_type, ordered_set
 
 import json

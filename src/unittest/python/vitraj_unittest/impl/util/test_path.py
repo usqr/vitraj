@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.impl.util.path import make_absolute, normalize
 from os.path import join, expanduser
 from unittest import TestCase, skipUnless

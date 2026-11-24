@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac, is_windows
+from vitraj.impl.util.platform_ import is_mac, is_windows
 from vitraj import load_json, show_alert, CANCEL, OK
 from vitraj.impl.onboarding import Tour, TourStep
 from vitraj.impl.util import is_below_dir

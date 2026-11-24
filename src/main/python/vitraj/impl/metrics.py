@@ -1,5 +1,5 @@
 from collections import deque
-from fbs_runtime.platform import is_linux
+from vitraj.impl.util.platform_ import is_linux
 from http.client import HTTPException
 from os import makedirs
 from os.path import dirname, exists

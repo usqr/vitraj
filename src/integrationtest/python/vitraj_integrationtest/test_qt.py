@@ -17,7 +17,7 @@ makes Qt print a warning. We suppress it with a custom QtMessageHandler.
 """
 
 from concurrent.futures import ThreadPoolExecutor
-from fbs_runtime.platform import is_mac
+from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt.thread import run_in_thread
 from vitraj_integrationtest.impl.model.test___init__ import \
 	SortedFileSystemModelAT

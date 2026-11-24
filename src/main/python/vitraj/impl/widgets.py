@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows, is_mac
+from vitraj.impl.util.platform_ import is_windows, is_mac
 from vitraj import DATA_DIRECTORY, OK
 from vitraj.impl.model import SortedFileSystemModel
 from vitraj.impl.quicksearch import Quicksearch

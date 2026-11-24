@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from os.path import splitdrive, normpath, expanduser, realpath
 from pathlib import PurePosixPath
 

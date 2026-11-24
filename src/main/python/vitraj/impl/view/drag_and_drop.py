@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_mac, is_windows, is_linux
+from vitraj.impl.util.platform_ import is_mac, is_windows, is_linux
 from vitraj.impl.util.qt import MoveAction, NoButton, AltModifier, \
 	ControlModifier, CopyAction
 from PyQt5.QtCore import QItemSelectionModel as QISM

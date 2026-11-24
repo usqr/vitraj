@@ -1,4 +1,4 @@
-from fbs_runtime.platform import is_windows
+from vitraj.impl.util.platform_ import is_windows
 from vitraj.url import as_url, dirname, relpath, as_human_readable, normalize
 from unittest import TestCase, skipIf
 

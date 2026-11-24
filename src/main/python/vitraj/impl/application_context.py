@@ -1,8 +1,8 @@
-from fbs_runtime import application_context as fbs_appctxt
-from fbs_runtime.application_context import cached_property
-from fbs_runtime.application_context.PyQt5 import ApplicationContext
-from fbs_runtime.excepthook import StderrExceptionHandler
-from fbs_runtime.platform import is_mac
+from vitraj.impl.app_context_base import ApplicationContext, cached_property
+from vitraj.impl.app_context_base import \
+	get_application_context as _get_application_context
+from vitraj.impl.util.excepthook import StderrExceptionHandler
+from vitraj.impl.util.platform_ import is_mac
 from vitraj import PLATFORM, DATA_DIRECTORY, Window
 from vitraj.impl.controller import Controller
 from vitraj.impl.font_database import FontDatabase
@@ -57,7 +57,7 @@ from vitraj.impl import fman_compat
 fman_compat.install()
 
 def get_application_context():
-	return fbs_appctxt.get_application_context(
+	return _get_application_context(
 		DevelopmentApplicationContext, FrozenApplicationContext
 	)
 
