@@ -9,7 +9,6 @@ from subprocess import run
 
 import os
 
-_UPDATES_DIR = 'updates/mac'
 
 @command
 def freeze():

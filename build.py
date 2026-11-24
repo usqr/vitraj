@@ -34,6 +34,19 @@ elif is_linux():
 	else:
 		raise NotImplementedError(linux_distribution())
 
+@fbs.cmdline.command
+def release():
+	"""
+	Replace fbs's own `release`. It would clean target/, build without
+	vitraj's freeze steps and then fail at the upload to fbs.sh.
+	"""
+	print(
+		'vitraj releases run on GitHub Actions. To release, push a version\n'
+		'tag, for example:\n\n'
+		'    git tag v1.7.4 && git push origin v1.7.4\n\n'
+		'See "Release pipeline" in AGENTS.md.'
+	)
+
 if __name__ == '__main__':
 	project_dir = dirname(__file__)
 	fbs.cmdline.main(project_dir)

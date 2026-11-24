@@ -35,8 +35,7 @@ ADD .rpmmacros /root
 
 RUN dnf install -y createrepo_c
 
-# The `release` build command calls git to check for uncommitted changes. So we
-# need git:
+# Some build steps call git:
 RUN dnf install -y git
 
 ENTRYPOINT ["/bin/bash"]
