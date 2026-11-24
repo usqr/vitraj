@@ -41,6 +41,8 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # cairosvg (for the DMG background) needs the cairo library:
+          brew install cairo
           python -m pip install --upgrade pip
           pip install -Ur requirements/mac.txt
 
@@ -121,7 +123,7 @@ jobs:
           echo "Found signing identity: $IDENTITY"
 
       - name: Freeze app
-        run: python build.py freeze
+        run: python build.py --release freeze
 
       - name: Sign and notarize app
         if: ${{ steps.signing.outputs.identity != '' }}
