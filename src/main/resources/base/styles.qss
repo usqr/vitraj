@@ -147,10 +147,6 @@ QStatusBar QLabel {
 	padding-left: .1ex;
 }
 
-SplashScreen QPushButton {
-	max-width: 4em;
-}
-
 Overlay {
 	min-width: 20em;
 	max-width: 22em;

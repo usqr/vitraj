@@ -17,7 +17,6 @@ from PyQt5.QtWidgets import QWidget, QMainWindow, QSplitter, QStatusBar, \
 	QMessageBox, QInputDialog, QLineEdit, QFileDialog, QLabel, QDialog, \
 	QHBoxLayout, QPushButton, QVBoxLayout, QSplitterHandle, QApplication, \
 	QFrame, QAction, QSizePolicy, QProgressDialog, QProgressBar
-from random import randint, randrange
 
 import re
 
@@ -753,89 +752,6 @@ class Splitter(QSplitter):
 		width_increment = self.width() // self.count()
 		for i in range(1, self.count()):
 			self.moveSplitter(i * width_increment - handle_width // 2, i)
-
-class SplashScreen(QDialog):
-	def __init__(self, parent, app, license_expired, user_email):
-		super().__init__(parent, Qt.CustomizeWindowHint | Qt.WindowTitleHint)
-		self.app = app
-		self.setWindowTitle('vitraj')
-
-		button_texts = ('A', 'B', 'C')
-		button_to_press_i = randint(0, len(button_texts) - 1)
-		button_to_press = button_texts[button_to_press_i]
-
-		layout = QVBoxLayout()
-		layout.setContentsMargins(20, 20, 20, 20)
-
-		label = QLabel(self)
-		label.setText(
-			self._get_label_text(button_to_press, license_expired, user_email)
-		)
-		label.setOpenExternalLinks(True)
-		layout.addWidget(label)
-
-		button_container = QWidget(self)
-		button_layout = QHBoxLayout()
-		for i, button_text in enumerate(button_texts):
-			button = QPushButton(button_text, button_container)
-			button.setFocusPolicy(Qt.NoFocus)
-			action = self.accept if i == button_to_press_i else self.reject
-			button.clicked.connect(action)
-			button_layout.addWidget(button)
-		button_container.setLayout(button_layout)
-		layout.addWidget(button_container)
-
-		self.setLayout(layout)
-		self.finished.connect(self._finished)
-	def _get_label_text(self, button_to_press, license_expired, email):
-		p_style = 'line-height: 115%;'
-		if is_windows():
-			p_style += ' margin-left: 2px; text-indent: -2px;'
-		result = \
-			"<center style='line-height: 130%'>" \
-				"<h2>Welcome to vitraj!</h2>" \
-			"</center>"
-		if license_expired:
-			paragraphs = [
-				'<span style="color: red;">'
-					'Your license is not valid for this version of vitraj.'
-				'</span>'
-				'<br/>'
-				'For more information, please '
-				'<a href="https://fman.io/account/login?email=' + email + '">'
-					'log in to fman.io'
-				'</a>.',
-				"To continue without a license, press button %s."
-				% button_to_press
-			]
-		else:
-			# Make buy link more enticing on (roughly) every 10th run:
-			if randrange(10):
-				buy_link_style = ""
-			else:
-				buy_link_style = " style='color: #00ff00;'"
-			paragraphs = [
-				"To remove this annoying popup, please "
-				"<a href='https://fman.io/buy?s=f'" + buy_link_style + ">"
-					"obtain a license"
-				"</a>."
-				"<br/>"
-				"It only takes a minute and you'll never be bothered again!",
-				"To continue without a license for now, press button %s."
-				% button_to_press
-			]
-		result += ''.join(
-			"<p style='" + p_style + "'>" + p + "</p>" for p in paragraphs
-		)
-		return result
-	def keyPressEvent(self, event):
-		if event.matches(QKeySequence.Quit):
-			self.app.exit(0)
-		else:
-			event.ignore()
-	def _finished(self, result):
-		if result != self.Accepted:
-			self.app.exit(0)
 
 class Overlay(QFrame):
 	def __init__(self, parent, html, buttons=None):

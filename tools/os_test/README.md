@@ -21,9 +21,8 @@ sorting by a click on a header, or the `..` entry.
 The probe plugin writes the layout of the window: the panes, the folder URLs,
 the header and row rectangles, the open popups, and the double-click time of
 the app. It writes no file contents. But it writes the name of each file in the
-two panes and all popup texts. The text of the license splash screen can
-contain the email address of the user. Thus do not install the plugin for
-normal use, and do not share the state file.
+two panes and all popup texts. Thus do not install the plugin for normal use,
+and do not share the state file.
 
 ## Steps
 
@@ -79,7 +78,6 @@ Add `--dry-run` to print the click points and to click nothing. Add
 2. It makes sure that the process name contains `vitraj` (frozen app) or
    `python` (source run).
 3. It closes the popups:
-   - `SplashScreen`: the button named in "press button X".
    - `Overlay` with a "No" button: "No".
    - The alert with "extra configuration": "Cancel".
    - Other popups: the driver stops with an error.
@@ -124,11 +122,6 @@ The driver never clicks "OK". On the configuration alert, OK opens a browser.
   at the top left of the primary screen. Retina scaling does not change them.
   The test passed with the window on the primary screen and on a second
   screen above and to the right of the primary screen.
-- The `SplashScreen` path occurs only in an unlicensed or expired run that is
-  not the first run. To get it in an isolated HOME, write
-  `{"fman_version": "0.0.0"}` to
-  `$SCRATCH/home/Library/Application Support/vitraj/Local/Session.json` before
-  the start. This path passed 3 of 3 real runs on 2026-11-24.
 - A real run of the click test is necessary after a change to the probe plugin
   or to the popup texts.
 
@@ -139,8 +132,9 @@ folder `zeta` while the popups closed. The earlier driver did not wait for a
 new state after a click. Thus it could click the position of a closed popup
 again, and the file list was below that position.
 
-A test on 2026-11-24 proved this cause. The test clicked the splash screen
-button, and then clicked the same point 4 more times:
+A test on 2026-11-24 proved this cause. The test clicked the button of the
+license splash screen (removed in PR #38), and then clicked the same point 4
+more times:
 
 | Gap between the clicks | Result |
 |------------------------|--------|

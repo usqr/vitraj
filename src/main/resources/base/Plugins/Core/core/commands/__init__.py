@@ -37,17 +37,7 @@ from .goto import *
 
 class About(ApplicationCommand):
 	def __call__(self):
-		msg = "vitraj version: " + FMAN_VERSION
-		msg += "\n" + self._get_registration_info()
-		show_alert(msg)
-	def _get_registration_info(self):
-		user_json_path = os.path.join(DATA_DIRECTORY, 'Local', 'User.json')
-		try:
-			with open(user_json_path, 'r') as f:
-				data = json.load(f)
-			return 'Registered to %s.' % data['email']
-		except (FileNotFoundError, ValueError, KeyError):
-			return 'Not registered.'
+		show_alert("vitraj version: " + FMAN_VERSION)
 
 class Help(ApplicationCommand):
 
@@ -1356,40 +1346,6 @@ class Quit(ApplicationCommand):
 
 	def __call__(self):
 		sys.exit(0)
-
-class InstallLicenseKey(DirectoryPaneCommand):
-	def __call__(self, url=''):
-		curr_dir_url = self.pane.get_path()
-		if not url:
-			url = join(curr_dir_url, 'User.json')
-		if not exists(url):
-			if _is_file_url(curr_dir_url):
-				dir_path = as_human_readable(curr_dir_url)
-			else:
-				dir_path = os.path.expanduser('~')
-			file_path = show_file_open_dialog(
-				'Select User.json', dir_path, 'User.json'
-			)
-			if not file_path:
-				return
-			url = as_url(file_path)
-		copy(url, join(as_url(DATA_DIRECTORY), 'Local', 'User.json'))
-		show_alert(
-			"Thank you! Please restart fman to complete the registration. You "
-			"should no longer see the annoying popup when it starts."
-		)
-
-class LicenseKeyOpenListener(DirectoryPaneListener):
-	def on_command(self, command_name, args):
-		if command_name == 'open_file':
-			url = args['url']
-			if basename(url) == 'User.json':
-				choice = show_alert(
-					'User.json appears to be an fman license key file. Do you '
-					'want to install it?', YES | NO, YES
-				)
-				if choice & YES:
-					return 'install_license_key', {'url': url}
 
 class ZenOfFman(ApplicationCommand):
 	def __call__(self):
