@@ -1064,6 +1064,8 @@ def _build_override_qss(c):
 		% (c.get('base_bg', _DEFAULTS['base_bg']),
 		   c.get('alternate_bg', _DEFAULTS['alternate_bg']))
 	)
+	# styles.qss turns the row stripes off. Themes from this editor show them:
+	rules.append('FileListView { qproperty-alternatingRowColors: true; }')
 	rules.append(
 		'QPlainTextEdit { color: %s; }'
 		% c.get('text_primary', _DEFAULTS['text_primary'])

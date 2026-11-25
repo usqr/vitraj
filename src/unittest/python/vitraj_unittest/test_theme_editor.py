@@ -4,20 +4,27 @@ from unittest import TestCase
 import re
 import sys
 
-_PLUGINS = join(
-	dirname(__file__), '..', '..', '..', 'main', 'resources', 'base', 'Plugins'
-)
-if join(_PLUGINS, 'Theme Editor') not in sys.path:
-	sys.path.append(join(_PLUGINS, 'Theme Editor'))
+from PySide6.QtCore import QItemSelectionModel, Qt
+from PySide6.QtGui import QColor, QStandardItemModel
+from PySide6.QtWidgets import QApplication, QLabel, QStatusBar, QTableView
 
-from PySide6.QtCore import QItemSelectionModel # noqa: E402
-from PySide6.QtGui import QColor, QStandardItemModel # noqa: E402
-from PySide6.QtWidgets import QApplication, QLabel, QStatusBar, \
-	QTableView # noqa: E402
-from theme_editor import _BUILTIN_THEMES, _DEFAULTS, _build_override_qss \
-	# noqa: E402
+_RESOURCES = join(dirname(__file__), '..', '..', '..', 'main', 'resources', 'base')
+_THEME_EDITOR = join(_RESOURCES, 'Plugins', 'Theme Editor')
+
+# Import the plugin, then remove its folder from sys.path again:
+sys.path.append(_THEME_EDITOR)
+try:
+	from theme_editor import _BUILTIN_THEMES, _DEFAULTS, _build_override_qss
+finally:
+	sys.path.remove(_THEME_EDITOR)
 
 _app = QApplication.instance() or QApplication([])
+
+
+def _theme(name):
+	colors = dict(_DEFAULTS)
+	colors.update(_BUILTIN_THEMES[name])
+	return colors
 
 _HEX_COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
 
@@ -91,27 +98,29 @@ class BuiltinThemesTest(TestCase):
 
 class OverrideQssTest(TestCase):
 	def test_status_bar_label_shows_status_bar_color(self):
-		colors = dict(_DEFAULTS)
-		colors.update(_BUILTIN_THEMES['Bauhaus'])
+		# Phosphor has one status bar color, so the gradient has one color.
+		colors = _theme('Phosphor')
 		status_bar = QStatusBar()
 		status_bar.setStyleSheet(_build_override_qss(colors))
 		label = QLabel('Selected: 2', status_bar)
 		status_bar.addWidget(label)
 		status_bar.resize(400, 30)
 		pixel = status_bar.grab().toImage().pixelColor(label.x() + 2, 15)
-		self.assertNotEqual(QColor(colors['window_bg']).rgb(), pixel.rgb())
-		status_bar.deleteLater()
+		expected = QColor(colors['status_bar_bg_top'])
+		self.assertEqual(expected.rgb(), pixel.rgb())
 
 	def test_selected_alternate_row_keeps_alternate_color(self):
-		colors = dict(_DEFAULTS)
-		colors.update(_BUILTIN_THEMES['Greenbar'])
+		colors = _theme('Greenbar')
 		model = QStandardItemModel(3, 2)
 		view = QTableView()
 		view.setModel(model)
 		view.setAlternatingRowColors(True)
 		view.setStyleSheet(_build_override_qss(colors))
 		view.resize(300, 200)
+		# Lay out the view, but do not open a window on the screen:
+		view.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
 		view.show()
+		self.addCleanup(view.close)
 		_app.processEvents()
 		view.selectionModel().select(
 			model.index(1, 1), QItemSelectionModel.SelectionFlag.Select
@@ -120,13 +129,30 @@ class OverrideQssTest(TestCase):
 		image = view.viewport().grab().toImage()
 		pixel = image.pixelColor(rect.center())
 		self.assertEqual(QColor(colors['alternate_bg']).rgb(), pixel.rgb())
-		view.hide()
-		view.deleteLater()
 
 
 class FileListViewTest(TestCase):
-	def test_file_list_shows_alternate_rows(self):
+	def _view(self, style_sheet, start_value):
+		# The start value is the opposite of the expected value. Thus, only the
+		# style sheet can make the test pass.
 		from vitraj.impl.view import FileListView
 		view = FileListView(None, get_context_menu=lambda *_: [])
-		self.assertTrue(view.alternatingRowColors())
-		view.deleteLater()
+		view.setAlternatingRowColors(start_value)
+		view.setStyleSheet(style_sheet)
+		view.ensurePolished()
+		return view
+
+	def _default_qss(self):
+		with open(join(_RESOURCES, 'styles.qss')) as f:
+			return f.read()
+
+	def test_default_theme_shows_no_alternate_rows(self):
+		self.assertFalse(self._view(self._default_qss(), True).alternatingRowColors())
+
+	def test_other_theme_plugin_shows_no_alternate_rows(self):
+		qss = self._default_qss() + 'QTableView { background-color: white; }'
+		self.assertFalse(self._view(qss, True).alternatingRowColors())
+
+	def test_theme_editor_theme_shows_alternate_rows(self):
+		qss = self._default_qss() + _build_override_qss(_theme('Greenbar'))
+		self.assertTrue(self._view(qss, False).alternatingRowColors())
