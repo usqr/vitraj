@@ -16,7 +16,7 @@ for _plugin in ('File Preview', 'File Preview PDF'):
 		sys.path.append(join(_PLUGINS, _plugin))
 
 from PySide6.QtCore import QPointF, QSize, QSizeF, Qt # noqa: E402
-from PySide6.QtGui import QImage # noqa: E402
+from PySide6.QtGui import QImage, QPixmap # noqa: E402
 from vitraj_unittest.qt_wait import qwait # noqa: E402
 from PySide6.QtWidgets import QApplication # noqa: E402
 
@@ -237,8 +237,6 @@ class ZoomWidgetTest(TestCase):
 		self.widget.show()
 		image = QImage(200, 100, QImage.Format_RGB32)
 		image.fill(Qt.red)
-		self.widget._render_page = None
-		from PySide6.QtGui import QPixmap
 		self.widget.show_image_pixmap(
 			QPixmap.fromImage(image), 'info', QSize(200, 100)
 		)
@@ -271,11 +269,13 @@ class ZoomWidgetTest(TestCase):
 		self.widget.zoom_fit()
 		self.assertIsNone(self.widget._zoom)
 	def test_wheel_zoom_keeps_point_under_cursor(self):
-		# At these zooms, the image is larger than the view:
-		self.widget._set_zoom(3)
+		# Larger than the view at zoom 1, on any screen:
+		image = QImage(2000, 2000, QImage.Format_RGB32)
+		self.widget.show_image_pixmap(QPixmap.fromImage(image), 'info')
+		self.widget._set_zoom(1)
 		anchor = QPointF(40, 30)
 		before = self.widget._image_point_at(anchor)
-		self.widget._set_zoom(4, anchor)
+		self.widget._set_zoom(1.5, anchor)
 		after = self.widget._image_point_at(anchor)
 		self.assertAlmostEqual(before.x(), after.x(), delta=1)
 		self.assertAlmostEqual(before.y(), after.y(), delta=1)
