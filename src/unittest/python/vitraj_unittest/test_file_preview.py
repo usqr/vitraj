@@ -343,6 +343,36 @@ class PagesWidgetTest(TestCase):
 		self.assertEqual(0, self.widget.page_count())
 		self.assertFalse(self.widget._page_label.isVisibleTo(self.widget))
 
+class PreviewCommandTest(TestCase):
+	def test_calls_preview_method_in_main_thread(self):
+		from file_preview import _call_preview
+		from threading import Thread
+		from vitraj.impl.util.qt.thread import is_in_main_thread
+		calls = []
+		class Preview:
+			def zoom_in(self):
+				calls.append(is_in_main_thread())
+		pane = _PanelPane(Preview())
+		Thread(
+			target=_call_preview, args=(pane, 'zoom_in'), daemon=True
+		).start()
+		self.assertTrue(_wait_until(lambda: calls))
+		self.assertEqual([True], calls)
+	def test_no_preview_does_nothing(self):
+		from file_preview import _call_preview
+		_call_preview(_PanelPane(None, panel_id='settings'), 'zoom_in')
+	def test_page_count_without_preview_is_0(self):
+		from file_preview import _preview_page_count
+		pane = _PanelPane(None, panel_id='settings')
+		self.assertEqual(0, _preview_page_count(pane))
+
+class _PanelPane:
+	def __init__(self, widget, panel_id='preview'):
+		class Window:
+			def get_active_panel(self, _pane):
+				return panel_id, widget
+		self.window = Window()
+
 @skipIf(file_preview_pdf._load_fitz() is None, 'PyMuPDF is not installed')
 class RenderPdfTest(TestCase):
 	def test_missing_pymupdf_raises_in_worker(self):

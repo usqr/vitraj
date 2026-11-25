@@ -704,6 +704,98 @@ class ExitPreview(DirectoryPaneCommand):
 		return self.pane.window.is_panel_active(self.pane, _PANEL_ID)
 
 
+class PreviewNextPage(DirectoryPaneCommand):
+
+	aliases = ('Preview: next page',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'next_page')
+
+	def is_visible(self):
+		return _preview_page_count(self.pane) > 1
+
+
+class PreviewPreviousPage(DirectoryPaneCommand):
+
+	aliases = ('Preview: previous page',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'previous_page')
+
+	def is_visible(self):
+		return _preview_page_count(self.pane) > 1
+
+
+class PreviewZoomIn(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom in',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_in')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomOut(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom out',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_out')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomFit(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom to fit',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_fit')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomActual(DirectoryPaneCommand):
+
+	aliases = ('Preview: actual size',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_actual')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+def _get_preview(pane):
+	"""The PreviewWidget of `pane`, or None if the preview is not open."""
+	active = pane.window.get_active_panel(pane)
+	if not active or active[0] != _PANEL_ID:
+		return None
+	return active[1]
+
+
+def _preview_page_count(pane):
+	preview = _get_preview(pane)
+	return 0 if preview is None else preview.page_count()
+
+
+@run_in_main_thread
+def _call_preview(pane, method_name):
+	# vitraj runs commands in a background thread. Widgets need the main one.
+	preview = _get_preview(pane)
+	if preview is None:
+		return
+	try:
+		getattr(preview, method_name)()
+	except RuntimeError:
+		# Qt deleted the widget in the meantime (the panel was closed).
+		pass
+
+
 class PreviewModeListener(DirectoryPaneListener):
 	def on_path_changed(self):
 		# vitraj calls listeners in a background thread. The preview uses
