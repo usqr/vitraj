@@ -3,6 +3,14 @@ QTableView, QMessageBox, QDialog, QListView, QPlainTextEdit {
 	border: none;
 }
 
+FileListView {
+	/*
+	 * The default theme shows no row stripes. The Theme Editor turns them on.
+	 * Other theme plugins thus do not get stripes that they did not ask for.
+	 */
+	qproperty-alternatingRowColors: false;
+}
+
 QPlainTextEdit {
 	color: white;
 }

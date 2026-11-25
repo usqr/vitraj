@@ -183,6 +183,230 @@ _BUILTIN_THEMES = {
 		'quicksearch_bg': '#ffffff', 'quicksearch_input_bg': '#ffffff',
 		'quicksearch_input_text': '#000000', 'quicksearch_selected': '#f6f8fa',
 	},
+	# The themes below come from coolors.co palettes. Their text contrast
+	# is held by _READABLE_THEMES in test_theme_editor.py.
+	'Bauhaus': {
+		'window_bg': '#2a2b2a', 'base_bg': '#313231', 'alternate_bg': '#363736',
+		'header_bg_top': '#424342', 'header_bg_bottom': '#363736',
+		'status_bar_bg_top': '#4a9dd3', 'status_bar_bg_bottom': '#3d8bc0',
+		'status_bar_border': '#7bb8e2', 'location_bar_border': '#424342',
+		'text_primary': '#ececec', 'text_secondary': '#c9c9c9',
+		'text_dirs': '#ececec', 'text_header': '#f4d834',
+		'text_status': '#1a1b1a', 'text_location': '#a9a9a9',
+		'selected_color': '#f4d834', 'cursor_bg': '#cc292a',
+		'input_bg': '#424342', 'input_border': '#4a9dd3', 'input_text': '#ececec',
+		'quicksearch_bg': '#363736', 'quicksearch_input_bg': '#ececec',
+		'quicksearch_input_text': '#2a2b2a', 'quicksearch_selected': '#cc292a',
+	},
+	'Bauhaus Light': {
+		'window_bg': '#ececec', 'base_bg': '#f8f8f8', 'alternate_bg': '#f0f0f0',
+		'header_bg_top': '#ececec', 'header_bg_bottom': '#e0e0e0',
+		'status_bar_bg_top': '#424342', 'status_bar_bg_bottom': '#424342',
+		'status_bar_border': '#cc292a', 'location_bar_border': '#d0d0d0',
+		'text_primary': '#2a2b2a', 'text_secondary': '#424342',
+		'text_dirs': '#1f5f8b', 'text_header': '#cc292a',
+		'text_status': '#ececec', 'text_location': '#424342',
+		'selected_color': '#cc292a', 'cursor_bg': '#f4d834',
+		'input_bg': '#ffffff', 'input_border': '#4a9dd3', 'input_text': '#2a2b2a',
+		'quicksearch_bg': '#ececec', 'quicksearch_input_bg': '#ffffff',
+		'quicksearch_input_text': '#2a2b2a', 'quicksearch_selected': '#f4d834',
+	},
+	'Midnight Slate': {
+		'window_bg': '#0d1b2a', 'base_bg': '#1b263b', 'alternate_bg': '#1f2b42',
+		'header_bg_top': '#415a77', 'header_bg_bottom': '#1b263b',
+		'status_bar_bg_top': '#415a77', 'status_bar_bg_bottom': '#344a63',
+		'status_bar_border': '#778da9', 'location_bar_border': '#0d1b2a',
+		'text_primary': '#e0e1dd', 'text_secondary': '#8a9fba',
+		'text_dirs': '#e0e1dd', 'text_header': '#8a9fba',
+		'text_status': '#e0e1dd', 'text_location': '#778da9',
+		'selected_color': '#f4b860', 'cursor_bg': '#314867',
+		'input_bg': '#1b263b', 'input_border': '#415a77', 'input_text': '#e0e1dd',
+		'quicksearch_bg': '#1b263b', 'quicksearch_input_bg': '#e0e1dd',
+		'quicksearch_input_text': '#0d1b2a', 'quicksearch_selected': '#314867',
+	},
+	'Terracotta': {
+		'window_bg': '#1f3a45', 'base_bg': '#264653', 'alternate_bg': '#2a4c5a',
+		'header_bg_top': '#2f5664', 'header_bg_bottom': '#264653',
+		'status_bar_bg_top': '#2a9d8f', 'status_bar_bg_bottom': '#2a9d8f',
+		'status_bar_border': '#e9c46a', 'location_bar_border': '#1f3a45',
+		'text_primary': '#f4efe6', 'text_secondary': '#a8c5c0',
+		'text_dirs': '#f4efe6', 'text_header': '#e9c46a',
+		'text_status': '#10262e', 'text_location': '#a8c5c0',
+		'selected_color': '#f6ab6c', 'cursor_bg': '#2f5d6b',
+		'input_bg': '#1f3a45', 'input_border': '#2a9d8f', 'input_text': '#f4efe6',
+		'quicksearch_bg': '#1f3a45', 'quicksearch_input_bg': '#f4efe6',
+		'quicksearch_input_text': '#264653', 'quicksearch_selected': '#2f5d6b',
+	},
+	'Abyss': {
+		'window_bg': '#001219', 'base_bg': '#00171f', 'alternate_bg': '#001c25',
+		'header_bg_top': '#003746', 'header_bg_bottom': '#00171f',
+		'status_bar_bg_top': '#005f73', 'status_bar_bg_bottom': '#004e5f',
+		'status_bar_border': '#0a9396', 'location_bar_border': '#001219',
+		'text_primary': '#e9d8a6', 'text_secondary': '#94d2bd',
+		'text_dirs': '#e9d8a6', 'text_header': '#0a9396',
+		'text_status': '#e9d8a6', 'text_location': '#94d2bd',
+		'selected_color': '#ee9b00', 'cursor_bg': '#003a47',
+		'input_bg': '#002a35', 'input_border': '#0a9396', 'input_text': '#e9d8a6',
+		'quicksearch_bg': '#00171f', 'quicksearch_input_bg': '#e9d8a6',
+		'quicksearch_input_text': '#001219', 'quicksearch_selected': '#003a47',
+	},
+	'Olive Grove': {
+		'window_bg': '#1f2a12', 'base_bg': '#283618', 'alternate_bg': '#2d3c1c',
+		'header_bg_top': '#606c38', 'header_bg_bottom': '#283618',
+		'status_bar_bg_top': '#606c38', 'status_bar_bg_bottom': '#535e2f',
+		'status_bar_border': '#dda15e', 'location_bar_border': '#1f2a12',
+		'text_primary': '#fefae0', 'text_secondary': '#d6d3b4',
+		'text_dirs': '#fefae0', 'text_header': '#dda15e',
+		'text_status': '#fefae0', 'text_location': '#cfc9a5',
+		'selected_color': '#dda15e', 'cursor_bg': '#3e4d24',
+		'input_bg': '#1f2a12', 'input_border': '#606c38', 'input_text': '#fefae0',
+		'quicksearch_bg': '#283618', 'quicksearch_input_bg': '#fefae0',
+		'quicksearch_input_text': '#283618', 'quicksearch_selected': '#3e4d24',
+	},
+	'Ultraviolet': {
+		'window_bg': '#10002b', 'base_bg': '#170034', 'alternate_bg': '#1c003d',
+		'header_bg_top': '#3c096c', 'header_bg_bottom': '#240046',
+		'status_bar_bg_top': '#5a189a', 'status_bar_bg_bottom': '#4a1083',
+		'status_bar_border': '#9d4edd', 'location_bar_border': '#10002b',
+		'text_primary': '#f3e6ff', 'text_secondary': '#e0aaff',
+		'text_dirs': '#f3e6ff', 'text_header': '#c77dff',
+		'text_status': '#f3e6ff', 'text_location': '#c77dff',
+		'selected_color': '#f72585', 'cursor_bg': '#3c096c',
+		'input_bg': '#240046', 'input_border': '#7b2cbf', 'input_text': '#f3e6ff',
+		'quicksearch_bg': '#170034', 'quicksearch_input_bg': '#e0aaff',
+		'quicksearch_input_text': '#10002b', 'quicksearch_selected': '#3c096c',
+	},
+	'Harbor': {
+		'window_bg': '#172b47', 'base_bg': '#1d3557', 'alternate_bg': '#20395d',
+		'header_bg_top': '#274872', 'header_bg_bottom': '#1d3557',
+		'status_bar_bg_top': '#34668a', 'status_bar_bg_bottom': '#2c5a7b',
+		'status_bar_border': '#a8dadc', 'location_bar_border': '#172b47',
+		'text_primary': '#f1faee', 'text_secondary': '#a8dadc',
+		'text_dirs': '#f1faee', 'text_header': '#a8dadc',
+		'text_status': '#f1faee', 'text_location': '#a8dadc',
+		'selected_color': '#ff8088', 'cursor_bg': '#2b4f7a',
+		'input_bg': '#172b47', 'input_border': '#457b9d', 'input_text': '#f1faee',
+		'quicksearch_bg': '#1d3557', 'quicksearch_input_bg': '#f1faee',
+		'quicksearch_input_text': '#1d3557', 'quicksearch_selected': '#2b4f7a',
+	},
+	'Ember': {
+		'window_bg': '#03071e', 'base_bg': '#0c0714', 'alternate_bg': '#120a1a',
+		'header_bg_top': '#370617', 'header_bg_bottom': '#0c0714',
+		'status_bar_bg_top': '#6a040f', 'status_bar_bg_bottom': '#55030c',
+		'status_bar_border': '#dc2f02', 'location_bar_border': '#03071e',
+		'text_primary': '#fff1d6', 'text_secondary': '#e8d9c0',
+		'text_dirs': '#ffba08', 'text_header': '#f48c06',
+		'text_status': '#ffe6b0', 'text_location': '#faa307',
+		'selected_color': '#ff4d2e', 'cursor_bg': '#370617',
+		'input_bg': '#1a0b14', 'input_border': '#9d0208', 'input_text': '#fff1d6',
+		'quicksearch_bg': '#0c0714', 'quicksearch_input_bg': '#fff1d6',
+		'quicksearch_input_text': '#03071e', 'quicksearch_selected': '#370617',
+	},
+	'Amber Night': {
+		'window_bg': '#0f1a30', 'base_bg': '#14213d', 'alternate_bg': '#172644',
+		'header_bg_top': '#1d2d52', 'header_bg_bottom': '#14213d',
+		'status_bar_bg_top': '#fca311', 'status_bar_bg_bottom': '#e8950c',
+		'status_bar_border': '#fcb94a', 'location_bar_border': '#0f1a30',
+		'text_primary': '#ffffff', 'text_secondary': '#b9c2d4',
+		'text_dirs': '#ffffff', 'text_header': '#fca311',
+		'text_status': '#000000', 'text_location': '#a9b3c8',
+		'selected_color': '#fca311', 'cursor_bg': '#24365e',
+		'input_bg': '#0f1a30', 'input_border': '#fca311', 'input_text': '#ffffff',
+		'quicksearch_bg': '#14213d', 'quicksearch_input_bg': '#e5e5e5',
+		'quicksearch_input_text': '#000000', 'quicksearch_selected': '#24365e',
+	},
+	'Evergreen': {
+		'window_bg': '#081c15', 'base_bg': '#0d241b', 'alternate_bg': '#10291f',
+		'header_bg_top': '#1b4332', 'header_bg_bottom': '#0d241b',
+		'status_bar_bg_top': '#2d6a4f', 'status_bar_bg_bottom': '#245a42',
+		'status_bar_border': '#52b788', 'location_bar_border': '#081c15',
+		'text_primary': '#d8f3dc', 'text_secondary': '#b7e4c7',
+		'text_dirs': '#d8f3dc', 'text_header': '#74c69d',
+		'text_status': '#d8f3dc', 'text_location': '#95d5b2',
+		'selected_color': '#f4d35e', 'cursor_bg': '#1b4332',
+		'input_bg': '#10291f', 'input_border': '#40916c', 'input_text': '#d8f3dc',
+		'quicksearch_bg': '#0d241b', 'quicksearch_input_bg': '#d8f3dc',
+		'quicksearch_input_text': '#081c15', 'quicksearch_selected': '#1b4332',
+	},
+	'Parchment': {
+		'window_bg': '#e9edc9', 'base_bg': '#fefae0', 'alternate_bg': '#faf5d8',
+		'header_bg_top': '#e9edc9', 'header_bg_bottom': '#ccd5ae',
+		'status_bar_bg_top': '#ccd5ae', 'status_bar_bg_bottom': '#c1cba0',
+		'status_bar_border': '#d4a373', 'location_bar_border': '#ccd5ae',
+		'text_primary': '#3a3a2a', 'text_secondary': '#5c5a45',
+		'text_dirs': '#2f3a14', 'text_header': '#5a5a44',
+		'text_status': '#3a3a2a', 'text_location': '#5a5a44',
+		'selected_color': '#a84d18', 'cursor_bg': '#ccd5ae',
+		'input_bg': '#fffdf0', 'input_border': '#d4a373', 'input_text': '#3a3a2a',
+		'quicksearch_bg': '#e9edc9', 'quicksearch_input_bg': '#fefae0',
+		'quicksearch_input_text': '#3a3a2a', 'quicksearch_selected': '#ccd5ae',
+	},
+	'Cotton Candy': {
+		'window_bg': '#f3ecf7', 'base_bg': '#fffafc', 'alternate_bg': '#fdf2f7',
+		'header_bg_top': '#e4d6ec', 'header_bg_bottom': '#cdb4db',
+		'status_bar_bg_top': '#bde0fe', 'status_bar_bg_bottom': '#a2d2ff',
+		'status_bar_border': '#cdb4db', 'location_bar_border': '#e4d6ec',
+		'text_primary': '#2e2140', 'text_secondary': '#4a3b5c',
+		'text_dirs': '#2a4a7a', 'text_header': '#3d2b4f',
+		'text_status': '#1f2f4a', 'text_location': '#6a5a7c',
+		'selected_color': '#c2185b', 'cursor_bg': '#ffc8dd',
+		'input_bg': '#ffffff', 'input_border': '#cdb4db', 'input_text': '#2e2140',
+		'quicksearch_bg': '#f3ecf7', 'quicksearch_input_bg': '#ffffff',
+		'quicksearch_input_text': '#2e2140', 'quicksearch_selected': '#ffc8dd',
+	},
+	# The themes below take their look from terminals (CLI).
+	'Phosphor': {
+		'window_bg': '#050a05', 'base_bg': '#0a120a', 'alternate_bg': '#0d170d',
+		'header_bg_top': '#0f1f0f', 'header_bg_bottom': '#0a120a',
+		'status_bar_bg_top': '#33ff66', 'status_bar_bg_bottom': '#33ff66',
+		'status_bar_border': '#66ff8c', 'location_bar_border': '#0f1f0f',
+		'text_primary': '#66ff8c', 'text_secondary': '#2fae50',
+		'text_dirs': '#66ff8c', 'text_header': '#33ff66',
+		'text_status': '#031003', 'text_location': '#2fae50',
+		'selected_color': '#f0fff2', 'cursor_bg': '#134d22',
+		'input_bg': '#0a120a', 'input_border': '#2fae50', 'input_text': '#66ff8c',
+		'quicksearch_bg': '#0a120a', 'quicksearch_input_bg': '#0f1f0f',
+		'quicksearch_input_text': '#66ff8c', 'quicksearch_selected': '#134d22',
+	},
+	'Amber Terminal': {
+		'window_bg': '#0d0800', 'base_bg': '#140c00', 'alternate_bg': '#181000',
+		'header_bg_top': '#2a1a00', 'header_bg_bottom': '#140c00',
+		'status_bar_bg_top': '#ffb000', 'status_bar_bg_bottom': '#ffb000',
+		'status_bar_border': '#ffcc4d', 'location_bar_border': '#2a1a00',
+		'text_primary': '#ffcc66', 'text_secondary': '#cc8c00',
+		'text_dirs': '#ffb000', 'text_header': '#ffb000',
+		'text_status': '#1a0f00', 'text_location': '#cc8c00',
+		'selected_color': '#fff4d6', 'cursor_bg': '#4d3300',
+		'input_bg': '#140c00', 'input_border': '#cc8c00', 'input_text': '#ffcc66',
+		'quicksearch_bg': '#140c00', 'quicksearch_input_bg': '#2a1a00',
+		'quicksearch_input_text': '#ffcc66', 'quicksearch_selected': '#4d3300',
+	},
+	'ANSI': {
+		'window_bg': '#000000', 'base_bg': '#0c0c0c', 'alternate_bg': '#111111',
+		'header_bg_top': '#1c1c1c', 'header_bg_bottom': '#0c0c0c',
+		'status_bar_bg_top': '#0dbc79', 'status_bar_bg_bottom': '#0dbc79',
+		'status_bar_border': '#23d18b', 'location_bar_border': '#1c1c1c',
+		'text_primary': '#e5e5e5', 'text_secondary': '#cccccc',
+		'text_dirs': '#3b8eea', 'text_header': '#11a8cd',
+		'text_status': '#000000', 'text_location': '#11a8cd',
+		'selected_color': '#e5e510', 'cursor_bg': '#2a2a2a',
+		'input_bg': '#0c0c0c', 'input_border': '#555555', 'input_text': '#cccccc',
+		'quicksearch_bg': '#0c0c0c', 'quicksearch_input_bg': '#1c1c1c',
+		'quicksearch_input_text': '#cccccc', 'quicksearch_selected': '#2a2a2a',
+	},
+	'Greenbar': {
+		'window_bg': '#ebe6d6', 'base_bg': '#f7f5ee', 'alternate_bg': '#dcefd9',
+		'header_bg_top': '#ebe6d6', 'header_bg_bottom': '#dcd5c0',
+		'status_bar_bg_top': '#2b2b2b', 'status_bar_bg_bottom': '#2b2b2b',
+		'status_bar_border': '#c0392b', 'location_bar_border': '#cfc8b0',
+		'text_primary': '#1a1a1a', 'text_secondary': '#2b2b2b',
+		'text_dirs': '#000000', 'text_header': '#2b2b2b',
+		'text_status': '#f7f5ee', 'text_location': '#4a4a4a',
+		'selected_color': '#c0392b', 'cursor_bg': '#c9e3c4',
+		'input_bg': '#ffffff', 'input_border': '#8a8470', 'input_text': '#1a1a1a',
+		'quicksearch_bg': '#ebe6d6', 'quicksearch_input_bg': '#ffffff',
+		'quicksearch_input_text': '#1a1a1a', 'quicksearch_selected': '#c9e3c4',
+	},
 }
 
 _THEME_FILE_FILTER = 'fman Theme (*.fman-theme);;JSON (*.json);;All Files (*)'
@@ -840,6 +1064,8 @@ def _build_override_qss(c):
 		% (c.get('base_bg', _DEFAULTS['base_bg']),
 		   c.get('alternate_bg', _DEFAULTS['alternate_bg']))
 	)
+	# styles.qss turns the row stripes off. Themes from this editor show them:
+	rules.append('FileListView { qproperty-alternatingRowColors: true; }')
 	rules.append(
 		'QPlainTextEdit { color: %s; }'
 		% c.get('text_primary', _DEFAULTS['text_primary'])
@@ -874,8 +1100,16 @@ def _build_override_qss(c):
 		% (c.get('selected_color', _DEFAULTS['selected_color']),
 		   c.get('base_bg', _DEFAULTS['base_bg']))
 	)
+	# Keep the row stripe on selected rows. 'transparent' shows the native
+	# highlight color, so give the alternate color explicitly.
 	rules.append(
-		'QTableView::item:focus { background-color: %s; }'
+		'QTableView::item:selected:alternate { background-color: %s; }'
+		% c.get('alternate_bg', _DEFAULTS['alternate_bg'])
+	)
+	# The extra selectors give the cursor row priority over the rule above.
+	rules.append(
+		'QTableView::item:focus, QTableView::item:focus:selected, '
+		'QTableView::item:focus:alternate { background-color: %s; }'
 		% c.get('cursor_bg', _DEFAULTS['cursor_bg'])
 	)
 
@@ -909,6 +1143,8 @@ def _build_override_qss(c):
 		'QStatusBar, QStatusBar QLabel { color: %s; }'
 		% c.get('text_status', _DEFAULTS['text_status'])
 	)
+	# Show the status bar gradient behind its labels, not the '*' window_bg.
+	rules.append('QStatusBar QLabel { background: transparent; }')
 
 	rules.append(
 		'Quicksearch { background-color: %s; }'
