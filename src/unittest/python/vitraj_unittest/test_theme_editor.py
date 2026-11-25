@@ -4,9 +4,10 @@ from unittest import TestCase
 import re
 import sys
 
-from PySide6.QtCore import QItemSelectionModel, Qt
-from PySide6.QtGui import QColor, QStandardItemModel
-from PySide6.QtWidgets import QApplication, QLabel, QStatusBar, QTableView
+from PySide6.QtCore import QItemSelectionModel, QPoint, Qt
+from PySide6.QtGui import QColor, QImage, QStandardItemModel
+from PySide6.QtWidgets import QApplication, QLabel, QStatusBar, \
+	QStyleFactory, QTableView
 
 _RESOURCES = join(dirname(__file__), '..', '..', '..', 'main', 'resources', 'base')
 _THEME_EDITOR = join(_RESOURCES, 'Plugins', 'Theme Editor')
@@ -19,6 +20,23 @@ finally:
 	sys.path.remove(_THEME_EDITOR)
 
 _app = QApplication.instance() or QApplication([])
+
+
+def _pixel(widget, point):
+	# Render at a device pixel ratio of 1, so that the logical point is also
+	# the image point on a Retina screen. The macOS style cannot paint items
+	# into a QImage, so the test widgets use the Fusion style.
+	image = QImage(widget.size(), QImage.Format.Format_ARGB32)
+	widget.render(image)
+	return image.pixelColor(point)
+
+
+def _fusion(widget):
+	style = QStyleFactory.create('Fusion')
+	widget.setStyle(style)
+	# setStyle() does not take ownership. Keep the style for the widget's life:
+	widget._style = style
+	return widget
 
 
 def _theme(name):
@@ -100,19 +118,26 @@ class OverrideQssTest(TestCase):
 	def test_status_bar_label_shows_status_bar_color(self):
 		# Phosphor has one status bar color, so the gradient has one color.
 		colors = _theme('Phosphor')
-		status_bar = QStatusBar()
+		status_bar = _fusion(QStatusBar())
 		status_bar.setStyleSheet(_build_override_qss(colors))
 		label = QLabel('Selected: 2', status_bar)
+		label.setMinimumWidth(200)
 		status_bar.addWidget(label)
 		status_bar.resize(400, 30)
-		pixel = status_bar.grab().toImage().pixelColor(label.x() + 2, 15)
+		status_bar.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
+		status_bar.show()
+		self.addCleanup(status_bar.close)
+		_app.processEvents()
+		# A point in the label, to the right of its text:
+		point = label.geometry().topRight() + QPoint(-3, label.height() // 2)
+		pixel = _pixel(status_bar, point)
 		expected = QColor(colors['status_bar_bg_top'])
 		self.assertEqual(expected.rgb(), pixel.rgb())
 
 	def test_selected_alternate_row_keeps_alternate_color(self):
 		colors = _theme('Greenbar')
 		model = QStandardItemModel(3, 2)
-		view = QTableView()
+		view = _fusion(QTableView())
 		view.setModel(model)
 		view.setAlternatingRowColors(True)
 		view.setStyleSheet(_build_override_qss(colors))
@@ -126,8 +151,7 @@ class OverrideQssTest(TestCase):
 			model.index(1, 1), QItemSelectionModel.SelectionFlag.Select
 		)
 		rect = view.visualRect(model.index(1, 1))
-		image = view.viewport().grab().toImage()
-		pixel = image.pixelColor(rect.center())
+		pixel = _pixel(view.viewport(), rect.center())
 		self.assertEqual(QColor(colors['alternate_bg']).rgb(), pixel.rgb())
 
 
@@ -138,6 +162,7 @@ class FileListViewTest(TestCase):
 		from vitraj.impl.view import FileListView
 		view = FileListView(None, get_context_menu=lambda *_: [])
 		view.setAlternatingRowColors(start_value)
+		self.addCleanup(view.deleteLater)
 		view.setStyleSheet(style_sheet)
 		view.ensurePolished()
 		return view
