@@ -1,7 +1,9 @@
 from vitraj.impl.view.multiple_delegates import MultipleDelegates
 from vitraj.impl.view.cursor_movement import CursorMovement
-from PyQt5.QtCore import Qt, QItemSelectionModel as QISM
-from PyQt5.QtWidgets import QAbstractItemView, QStyledItemDelegate, QStyle
+from PySide6.QtCore import Qt, QItemSelectionModel as QISM
+from PySide6.QtWidgets import QAbstractItemView, QStyledItemDelegate, QStyle
+
+_CursorAction = QAbstractItemView.CursorAction
 
 class SingleRowMode(
 	# We need to extend CursorMovement because we overwrite some of its methods.
@@ -13,7 +15,7 @@ class SingleRowMode(
 		self._single_row_delegate = None
 		self._focus_out_reason = None
 	def _get_modifiers(self, cursor_action):
-		if cursor_action in (self.MoveHome, self.MoveEnd):
+		if cursor_action in (_CursorAction.MoveHome, _CursorAction.MoveEnd):
 			return Qt.ControlModifier
 		return super()._get_modifiers(cursor_action)
 	def _get_toggle_selection_command(self):

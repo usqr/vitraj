@@ -1,13 +1,12 @@
 from vitraj.impl.util.qt import MoveAction, CopyAction, IgnoreAction, from_qurl, \
 	as_qurl
 from vitraj.url import dirname
-from PyQt5.QtCore import QAbstractTableModel, pyqtSignal, QMimeData
+from PySide6.QtCore import QAbstractTableModel, Signal, QMimeData
 
-import sip
 
 class DragAndDrop(QAbstractTableModel):
 
-	files_dropped = pyqtSignal(list, str, bool)
+	files_dropped = Signal(list, str, bool)
 
 	def url(self, index):
 		raise NotImplementedError('Must be implemented by subclasses')
@@ -42,13 +41,8 @@ class DragAndDrop(QAbstractTableModel):
 	def mimeData(self, indexes):
 		result = QMimeData()
 		result.setUrls([as_qurl(self.url(index)) for index in indexes])
-		# The Qt documentation (http://doc.qt.io/qt-5/dnd.html) states that the
-		# QMimeData should not be deleted, because the target of the drag and
-		# drop operation takes ownership of it. We must therefore tell SIP not
-		# to garbage-collect `result` once this method returns. Without this
-		# instruction, we get a horrible crash because Qt tries to access an
-		# object that has already been gc'ed:
-		sip.transferto(result, None)
+		# The target of the drag and drop takes ownership of the QMimeData.
+		# PySide6 gives the returned object to C++ by itself (unlike sip).
 		return result
 	def dropMimeData(self, data, action, row, column, parent):
 		if action == IgnoreAction:

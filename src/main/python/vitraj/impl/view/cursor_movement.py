@@ -1,25 +1,25 @@
-from PyQt5.QtCore import Qt, QRect, QItemSelectionModel as QISM
-from PyQt5.QtWidgets import QTableView
+from PySide6.QtCore import Qt, QRect, QItemSelectionModel as QISM
+from PySide6.QtWidgets import QAbstractItemView, QTableView
 
 class CursorMovement(QTableView):
 	def move_cursor_down(self, toggle_selection=False):
 		if toggle_selection:
 			self._toggle_current_index()
-		self._move_cursor(self.MoveDown)
+		self._move_cursor(QAbstractItemView.CursorAction.MoveDown)
 	def move_cursor_up(self, toggle_selection=False):
 		if toggle_selection:
 			self._toggle_current_index()
-		self._move_cursor(self.MoveUp)
+		self._move_cursor(QAbstractItemView.CursorAction.MoveUp)
 	def move_cursor_page_up(self, toggle_selection=False):
-		self._move_cursor(self.MovePageUp, toggle_selection)
+		self._move_cursor(QAbstractItemView.CursorAction.MovePageUp, toggle_selection)
 		self.move_cursor_up()
 	def move_cursor_page_down(self, toggle_selection=False):
-		self._move_cursor(self.MovePageDown, toggle_selection)
+		self._move_cursor(QAbstractItemView.CursorAction.MovePageDown, toggle_selection)
 		self.move_cursor_down()
 	def move_cursor_home(self, toggle_selection=False):
-		self._move_cursor(self.MoveHome, toggle_selection)
+		self._move_cursor(QAbstractItemView.CursorAction.MoveHome, toggle_selection)
 	def move_cursor_end(self, toggle_selection=False):
-		self._move_cursor(self.MoveEnd, toggle_selection)
+		self._move_cursor(QAbstractItemView.CursorAction.MoveEnd, toggle_selection)
 	def _toggle_current_index(self):
 		index = self.currentIndex()
 		if index.isValid():

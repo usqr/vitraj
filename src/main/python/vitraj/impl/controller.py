@@ -1,5 +1,5 @@
 from vitraj.impl.util.qt.key_event import QtKeyEvent
-from PyQt5.QtGui import QContextMenuEvent
+from PySide6.QtGui import QContextMenuEvent
 from weakref import WeakValueDictionary
 
 class Controller:

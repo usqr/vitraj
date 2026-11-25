@@ -2,9 +2,9 @@ from vitraj.impl.util import filenotfounderror
 from vitraj.url import splitscheme
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
-from PyQt5.QtCore import QFileInfo
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QFileIconProvider
+from PySide6.QtCore import QFileInfo
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QFileIconProvider
 
 import logging
 import sys

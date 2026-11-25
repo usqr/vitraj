@@ -1,10 +1,10 @@
 from vitraj.impl.util.qt import ClickFocus, WA_MacShowFocusRect
-from PyQt5.QtCore import pyqtSignal
-from PyQt5.QtWidgets import QLineEdit
+from PySide6.QtCore import Signal
+from PySide6.QtWidgets import QLineEdit
 
 class LocationBar(QLineEdit):
 
-	clicked = pyqtSignal()
+	clicked = Signal()
 
 	def __init__(self, parent=None):
 		super().__init__(parent)

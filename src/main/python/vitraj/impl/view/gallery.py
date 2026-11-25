@@ -6,13 +6,11 @@ top so they can be unit-tested without spinning up a QApplication.
 
 import os
 
-from PyQt5.QtCore import (
-	QItemSelectionModel as QISM, QRect, QRectF, QSize, Qt, pyqtSignal
-)
-from PyQt5.QtGui import (
-	QBrush, QColor, QFontMetrics, QPainter, QPainterPath, QPen
-)
-from PyQt5.QtWidgets import QListView, QStyle, QStyledItemDelegate
+from PySide6.QtCore import QItemSelectionModel as QISM, QRect, QRectF, QSize, \
+	Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, \
+	QPainterPath, QPen
+from PySide6.QtWidgets import QListView, QStyle, QStyledItemDelegate
 
 from vitraj.impl.view.context_menu import ContextMenuMixin
 from vitraj.impl.view.drag_and_drop import DragAndDrop
@@ -115,7 +113,7 @@ class GalleryView(ContextMenuMixin, DragAndDrop, QListView):
 	Shares the model and selection-model with the pane's `FileListView`.
 	"""
 
-	tile_size_changed = pyqtSignal(int)   # new tile size in px
+	tile_size_changed = Signal(int)   # new tile size in px
 
 	def __init__(self, parent=None, get_context_menu=None):
 		super().__init__(parent, get_context_menu=get_context_menu)

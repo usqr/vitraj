@@ -8,11 +8,11 @@ Supports saving named themes and export/import as .fman-theme files.
 """
 from vitraj import DirectoryPaneCommand, DirectoryPaneListener, load_json, \
 	save_json, show_status_message, show_alert, show_prompt, YES, NO
-from PyQt5.QtCore import Qt, QSize
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, \
-	QScrollArea, QSizePolicy, QFrame, QPushButton, QColorDialog, \
-	QComboBox, QFileDialog, QApplication
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, \
+	QScrollArea, QSizePolicy, QFrame, QPushButton, QColorDialog, QComboBox, \
+	QFileDialog, QApplication
 
 import json
 import os
@@ -996,7 +996,7 @@ class InitThemeListener(DirectoryPaneListener):
 		super().__init__(*args, **kwargs)
 		if not InitThemeListener._applied:
 			InitThemeListener._applied = True
-			from PyQt5.QtCore import QTimer
+			from PySide6.QtCore import QTimer
 			QTimer.singleShot(500, lambda: _apply_saved_custom_theme(0))
 
 
@@ -1004,7 +1004,7 @@ def _apply_saved_custom_theme(attempt):
 	try:
 		from alternative_colors import delayed_init_started
 		if not delayed_init_started and attempt < 5:
-			from PyQt5.QtCore import QTimer
+			from PySide6.QtCore import QTimer
 			QTimer.singleShot(300, lambda: _apply_saved_custom_theme(attempt + 1))
 			return
 	except ImportError:

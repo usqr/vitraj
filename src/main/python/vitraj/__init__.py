@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from vitraj.impl.util import platform_ as platform
 from os import getenv
 from os.path import join, expanduser
-from PyQt5.QtWidgets import QMessageBox
+from PySide6.QtWidgets import QMessageBox
 
 import re
 

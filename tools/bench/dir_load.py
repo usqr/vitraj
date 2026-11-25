@@ -23,8 +23,8 @@ sys.path[:0] = [
 	join(_REPO, 'src', 'main', 'resources', 'base', 'Plugins', 'Core')
 ]
 
-from PyQt5.QtCore import QTimer # noqa: E402 (needs the sys.path above)
-from PyQt5.QtWidgets import QApplication, QFileIconProvider, QTableView # noqa: E402
+from PySide6.QtCore import QTimer # noqa: E402 (needs the sys.path above)
+from PySide6.QtWidgets import QApplication, QFileIconProvider, QTableView # noqa: E402
 
 _EXTENSIONS = ('txt', 'py', 'jpg', 'pdf', 'md', 'json', 'png', 'zip', 'html')
 _TIMEOUT_MS = 60000
@@ -111,7 +111,7 @@ def main():
 	bench = Benchmark(app, fs, target, profiler)
 	QTimer.singleShot(200, bench.start)
 	QTimer.singleShot(_TIMEOUT_MS, app.quit)
-	app.exec_()
+	app.exec()
 	shutil.rmtree(root, ignore_errors=True)
 	for name, seconds in bench.marks.items():
 		print('%-18s %6.0f ms' % (name, seconds * 1000))

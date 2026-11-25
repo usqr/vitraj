@@ -4,7 +4,7 @@ File Preview PDF - adds PDF rendering to the File Preview plugin.
 Requires: PyMuPDF (pip install PyMuPDF)
 Requires: File Preview plugin (must be loaded first)
 """
-from PyQt5.QtGui import QImage
+from PySide6.QtGui import QImage
 
 from functools import lru_cache
 

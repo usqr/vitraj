@@ -1,16 +1,17 @@
 from vitraj.impl.util.platform_ import is_mac
-from vitraj.impl.util.qt import WA_MacShowFocusRect, Key_Home, Key_End, \
-	ShiftModifier, Key_Return, Key_Enter, ToolTipRole, connect_once
+from vitraj.impl.util.qt import view_item_option, WA_MacShowFocusRect, \
+	Key_Home, Key_End, ShiftModifier, Key_Return, Key_Enter, ToolTipRole, \
+	connect_once
 from vitraj.impl.view.context_menu import ContextMenuMixin
 from vitraj.impl.view.drag_and_drop import DragAndDrop
 from vitraj.impl.view.move_without_updating_selection import \
 	MoveWithoutUpdatingSelection
 from vitraj.impl.view.resize_cols_to_contents import ResizeColumnsToContents
 from vitraj.impl.view.single_row_mode import SingleRowMode
-from PyQt5.QtCore import QEvent, QItemSelectionModel as QISM, QRect, Qt, \
-	pyqtSignal, QRectF
-from PyQt5.QtGui import QPen, QContextMenuEvent, QPainterPath, QRegion
-from PyQt5.QtWidgets import QTableView, QLineEdit, QStyle, \
+from PySide6.QtCore import QEvent, QItemSelectionModel as QISM, QRect, Qt, \
+	Signal, QRectF
+from PySide6.QtGui import QPen, QContextMenuEvent, QPainterPath, QRegion
+from PySide6.QtWidgets import QAbstractItemView, QTableView, QLineEdit, QStyle, \
 	QStyledItemDelegate, QProxyStyle, QHeaderView, QToolTip, QMenu
 
 class FileListView(
@@ -29,7 +30,7 @@ class FileListView(
 		self.setWordWrap(False)
 		self.setTabKeyNavigation(False)
 		# Double click should not open editor:
-		self.setEditTriggers(self.NoEditTriggers)
+		self.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 		self._init_vertical_header()
 		self._delegate = FileListItemDelegate()
 		self.add_delegate(self._delegate)
@@ -81,7 +82,7 @@ class FileListView(
 		self.edit(self.model().find(file_url))
 	def keyPressEvent(self, event):
 		if event.key() in (Key_Return, Key_Enter) \
-			and self.state() == self.EditingState:
+			and self.state() == QAbstractItemView.State.EditingState:
 			# When we're editing - ie. renaming a file - and the user presses
 			# Enter, we don't want that key stroke to propagate because it's
 			# already "handled" by the editor closing. So "ignore" the event:
@@ -101,7 +102,8 @@ class FileListView(
 		model.sort_order_changed.disconnect(self._on_sort_order_changed)
 		model.transaction_ended.disconnect(self._on_transaction_ended)
 	def _on_sort_order_changed(self, column, order):
-		self.sortByColumn(column, order)
+		# The signal carries the order as an int:
+		self.sortByColumn(column, Qt.SortOrder(order))
 	def _on_transaction_ended(self):
 		if self.model().rowCount() > 0:
 			current = self.currentIndex()
@@ -117,7 +119,7 @@ class FileListView(
 				# before so that `current` has been scrolled out of view.
 				self.executeDelayedItemsLayout()
 				if not self._is_row_visible(current.row()):
-					self.scrollTo(current, self.PositionAtTop)
+					self.scrollTo(current, QAbstractItemView.ScrollHint.PositionAtTop)
 	def _is_row_visible(self, i):
 		visible = self.get_visible_row_range()
 		return visible.start <= i < visible.stop
@@ -206,7 +208,7 @@ def set_selection(qlineedit, selection_start, selection_end=None):
 
 class FileListItemDelegate(QStyledItemDelegate):
 
-	editor_shown = pyqtSignal(QLineEdit)
+	editor_shown = Signal(QLineEdit)
 
 	def eventFilter(self, editor, event):
 		if not editor:
@@ -239,7 +241,7 @@ class FileListItemDelegate(QStyledItemDelegate):
 			# Mimic super implementation.
 			return False
 		if event.type() == QEvent.ToolTip:
-			text_width = self.sizeHint(view.viewOptions(), index).width()
+			text_width = self.sizeHint(view_item_option(view), index).width()
 			column_width = view.columnWidth(index.column())
 			if text_width > column_width:
 				# Show the tooltip.
@@ -303,6 +305,7 @@ class ProxyStyle(QProxyStyle):
 			return
 		super().drawPrimitive(element, option, painter, widget)
 	def styleHint(self, hint, *args):
-		if hint == self.SH_ProgressDialog_TextLabelAlignment:
-			return Qt.AlignLeft | Qt.AlignVCenter
+		if hint == QStyle.StyleHint.SH_ProgressDialog_TextLabelAlignment:
+			# Qt expects an int. In PySide6, the flags are a Python enum:
+			return (Qt.AlignLeft | Qt.AlignVCenter).value
 		return super().styleHint(hint, *args)

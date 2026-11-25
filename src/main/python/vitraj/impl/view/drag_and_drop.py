@@ -1,8 +1,8 @@
 from vitraj.impl.util.platform_ import is_mac, is_windows, is_linux
 from vitraj.impl.util.qt import MoveAction, NoButton, AltModifier, \
 	ControlModifier, CopyAction
-from PyQt5.QtCore import QItemSelectionModel as QISM
-from PyQt5.QtWidgets import QAbstractItemView
+from PySide6.QtCore import QItemSelectionModel as QISM
+from PySide6.QtWidgets import QAbstractItemView
 
 class DragAndDrop:
 	"""Mixin for any ``QAbstractItemView`` subclass (``QTableView``,
@@ -12,7 +12,7 @@ class DragAndDrop:
 	- the drop action follows the platform's copy/move modifier convention.
 
 	Pure-Python mixin (no Qt base class) so it can be paired with different
-	concrete views without producing a C++ diamond — PyQt5 binds one Qt
+	concrete views without producing a C++ diamond — PySide6 binds one Qt
 	parent per Python class, so the Qt base must come from the *other* side
 	of the inheritance. Mix BEFORE the view base class so ``super().__init__``
 	chains through the mixin into the view.
@@ -49,7 +49,7 @@ class DragAndDrop:
 				# Qt's default implementation only starts dragging when there
 				# are selected items. We also want to start dragging when there
 				# aren't (because in this case we drag the focus item):
-				self.setState(self.DraggingState)
+				self.setState(QAbstractItemView.State.DraggingState)
 				# startDrag(...) below now initiates drag and drop.
 				return
 		else:

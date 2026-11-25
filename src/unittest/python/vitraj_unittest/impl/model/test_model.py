@@ -4,7 +4,7 @@ from vitraj.impl.model.model import File, _NOT_LOADED
 from vitraj.impl.util.qt.thread import Executor
 from vitraj.url import splitscheme
 from vitraj_unittest.impl.model import StubFileSystem
-from PyQt5.QtCore import QObject, Qt, pyqtSignal
+from PySide6.QtCore import QObject, Qt, Signal
 from random import shuffle
 from unittest import TestCase
 
@@ -251,4 +251,4 @@ def c_desc(str_, sort_value_desc):
 	return Cell(str_, _NOT_LOADED, sort_value_desc)
 
 class StubApp(QObject):
-	aboutToQuit = pyqtSignal()
+	aboutToQuit = Signal()

@@ -8,7 +8,7 @@ from vitraj.impl.util.qt import connect_once, DisplayRole, DecorationRole
 from vitraj.impl.util.qt.thread import run_in_main_thread, is_in_main_thread
 from vitraj.url import splitscheme
 from vitraj_unittest.impl.model import StubFileSystem
-from PyQt5.QtCore import Qt
+from PySide6.QtCore import Qt
 from threading import Event
 from time import time, sleep
 

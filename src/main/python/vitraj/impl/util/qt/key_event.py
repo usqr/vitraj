@@ -2,8 +2,8 @@ from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt import KeypadModifier, Key_Down, Key_Up, Key_Left, \
 	Key_Right, Key_Return, Key_Enter, Key_Shift, Key_Control, Key_Meta, \
 	Key_Alt, Key_AltGr, Key_CapsLock, Key_NumLock, Key_ScrollLock
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QKeySequence
+from PySide6.QtCore import Qt, QKeyCombination
+from PySide6.QtGui import QKeySequence
 
 class QtKeyEvent:
 	def __init__(self, key, modifiers):
@@ -22,8 +22,9 @@ class QtKeyEvent:
 			# [1]: http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
 			modifiers &= ~KeypadModifier
 		key, modifiers, keys = self._alias_return_and_enter(modifiers, keys)
-		return QKeySequence(modifiers | key).matches(QKeySequence(keys)) \
-			   == QKeySequence.ExactMatch
+		combined = _value(modifiers) | int(key)
+		sequence = QKeySequence(QKeyCombination.fromCombined(combined))
+		return sequence.matches(QKeySequence(keys)) == QKeySequence.ExactMatch
 	def is_modifier_only(self):
 		return self.key in (
 			Key_Shift, Key_Control, Key_Meta, Key_Alt, Key_AltGr, Key_CapsLock,
@@ -32,11 +33,11 @@ class QtKeyEvent:
 	def __str__(self):
 		result = ''
 		if self.modifiers:
-			result += QKeySequence(self.modifiers).toString()
-		for key in [k for k in dir(Qt) if k.startswith('Key_')]:
-			if self.key == getattr(Qt, key):
-				result += key[len('Key_'):]
-				break
+			result += QKeySequence(_value(self.modifiers)).toString()
+		# PySide6 gives unknown keys a name like '305419896', not 'Key_...':
+		name = Qt.Key(self.key).name
+		if name.startswith('Key_'):
+			result += name[len('Key_'):]
 		else:
 			result += '0x%02x' % self.key
 		return result
@@ -53,10 +54,14 @@ class QtKeyEvent:
 	def _replace(self, keys, replacements):
 		return '+'.join(replacements.get(k, k) for k in keys.split('+'))
 	def __hash__(self):
-		return hash((int(self.key), int(self.modifiers)))
+		return hash((int(self.key), _value(self.modifiers)))
 	def __eq__(self, other):
 		if not isinstance(other, QtKeyEvent):
 			return False
 		return self.key == other.key and self.modifiers == other.modifiers
 	def __ne__(self, other):
 		return not self == other
+
+def _value(flags):
+	"""The int value of Qt flags. In PySide6, flags are a Python enum."""
+	return getattr(flags, 'value', flags)

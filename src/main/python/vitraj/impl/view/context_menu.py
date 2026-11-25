@@ -1,6 +1,6 @@
-from PyQt5.QtCore import QItemSelectionModel as QISM
-from PyQt5.QtGui import QContextMenuEvent, QKeySequence
-from PyQt5.QtWidgets import QAction
+from PySide6.QtCore import QItemSelectionModel as QISM
+from PySide6.QtGui import QContextMenuEvent, QKeySequence
+from PySide6.QtGui import QAction
 
 
 class ContextMenuMixin:

@@ -1,5 +1,5 @@
-from PyQt5.QtCore import QItemSelectionModel as QISM, QEvent
-from PyQt5.QtWidgets import QTableView
+from PySide6.QtCore import QItemSelectionModel as QISM, QEvent
+from PySide6.QtWidgets import QTableView
 
 class MoveWithoutUpdatingSelection(QTableView):
 	def selectionCommand(self, index, event):

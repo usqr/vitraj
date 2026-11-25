@@ -10,7 +10,7 @@ These guard against subtle Qt MRO + setter-order regressions:
 """
 from unittest import TestCase
 
-from PyQt5.QtWidgets import QAbstractItemView, QApplication
+from PySide6.QtWidgets import QAbstractItemView, QApplication
 
 from vitraj.impl.view import FileListView
 from vitraj.impl.view.context_menu import ContextMenuMixin

@@ -35,9 +35,9 @@ from vitraj.impl.view import ProxyStyle
 from vitraj.impl.widgets import MainWindow, Application
 from os import makedirs
 from os.path import dirname, join
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPalette
-from PyQt5.QtWidgets import QStyleFactory, QFileIconProvider
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QStyleFactory, QFileIconProvider
 
 import vitraj
 import vitraj.fs
@@ -71,7 +71,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 		self._start_metrics()
 		self._load_plugins()
 		self.session_manager.show_main_window(self.window)
-		return self.app.exec_()
+		return self.app.exec()
 	def init_logging(self):
 		logging.basicConfig()
 	def _start_metrics(self):
@@ -82,6 +82,9 @@ class DevelopmentApplicationContext(ApplicationContext):
 		pass
 	def _load_plugins(self):
 		vitraj.FMAN_VERSION = self.fman_version
+		# Third-party plugins import PyQt5. Give them PySide6 instead:
+		from vitraj.impl import pyqt5_compat
+		pyqt5_compat.install()
 		plugin_dirs = find_plugin_dirs(
 			self.get_resource('Plugins'),
 			join(DATA_DIRECTORY, 'Plugins', 'Third-party'),
@@ -136,14 +139,7 @@ class DevelopmentApplicationContext(ApplicationContext):
 		result.setStyle(self.style)
 		result.setPalette(self.palette)
 		result.aboutToQuit.connect(self.on_quit)
-		# We need to instantiate this somewhere. So why not here:
-		_ = self.mac_clipboard_fix
 		return result
-	@cached_property
-	def mac_clipboard_fix(self):
-		if is_mac():
-			from vitraj.impl.mac_clipboard_fix import MacClipboardFix
-			return MacClipboardFix()
 	@cached_property
 	def command_callback(self):
 		return CommandCallback(self.metrics)

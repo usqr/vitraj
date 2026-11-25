@@ -2,7 +2,7 @@
 
 ## Project overview
 
-vitraj (formerly fman) is a cross-platform dual-pane file manager built with Python and PyQt5, and frozen with PyInstaller. It supports macOS, Windows, and Linux.
+vitraj (formerly fman) is a cross-platform dual-pane file manager built with Python and PySide6 (Qt 6), and frozen with PyInstaller. It supports macOS, Windows, and Linux.
 
 ## Architecture
 
@@ -216,13 +216,17 @@ Note: `".."` parent dir entries are always passed through filters at the model l
 ## Important constraints
 
 - **Python 3.9+** minimum, tested up to 3.14. Do not use features removed after 3.9.
-- **PyQt5 5.15.x** — not PyQt6. Qt5 API only.
+- **PySide6 (Qt 6)** — not PyQt. Use `Signal` (not `pyqtSignal`), `shiboken6` (not `sip`). Specific rules:
+  - Access enum values through the class, not an instance: `QAbstractItemView.CursorAction.MoveHome`, not `self.MoveHome` (PySide6 raises `AttributeError`).
+  - Qt flags are Python enums. Where Qt expects an `int` (for example a `styleHint()` return value or a `Signal(int)`), pass `.value`.
+  - In tests, wait with `vitraj_unittest.qt_wait.qwait(ms)`, not `QTest.qWait`: in PySide6, `qWait` holds the GIL, so worker threads stop.
+  - Third-party plugins import PyQt5. `vitraj.impl.pyqt5_compat` maps those imports to PySide6. Do not import PyQt5 anywhere else.
 - **Python 3.14 gotchas**: No implicit float-to-int in Qt calls (use `int()`), no `traceback._some_str`, `TracebackException.exc_type` is read-only.
 - **Cross-platform**: Test changes against macOS, Windows, and Linux code paths. Platform checks use `vitraj.PLATFORM` ('Mac', 'Windows', 'Linux').
 - **Thread safety**: Widget manipulation must happen on the main thread. Use `@run_in_main_thread` from `vitraj.impl.util.qt.thread`. Model operations run in the worker thread.
 - **Build**: `build.py` runs PyInstaller directly (`src/build/python/build_impl/freeze.py`). Add hidden imports to `hidden_imports` in `src/build/settings/<os>.json`. Settings are merged like this: later profiles override, lists are joined, `${key}` is filled in (`vitraj/impl/build_settings.py`). The frozen app reads its public settings from `build_settings.json` in its resources.
 - **macOS TCC**: Add `NS*UsageDescription` keys to `src/build/settings/mac.json` `info_plist_extra` for folder access.
-- **No unnecessary dependencies**: Prefer PyQt5 built-in capabilities. Use `try/except ImportError` for optional deps (PyMuPDF, Pillow) so the app works without them.
+- **No unnecessary dependencies**: Prefer Qt built-in capabilities. Use `try/except ImportError` for optional deps (PyMuPDF, Pillow) so the app works without them.
 
 ## Release pipeline
 

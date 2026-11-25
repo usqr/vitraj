@@ -41,7 +41,7 @@ class ApplicationContext:
 		self.app
 		# On Windows, vitraj is not a console app. So Ctrl+C does not apply:
 		if not is_windows():
-			from PyQt5.QtNetwork import QAbstractSocket
+			from PySide6.QtNetwork import QAbstractSocket
 			self._signal_wakeup_handler = \
 				SignalWakeupHandler(self.app, QAbstractSocket)
 			self._signal_wakeup_handler.install()
@@ -51,7 +51,7 @@ class ApplicationContext:
 		raise NotImplementedError()
 	@cached_property
 	def app(self):
-		from PyQt5.QtWidgets import QApplication
+		from PySide6.QtWidgets import QApplication
 		result = QApplication([])
 		result.setApplicationName(self.build_settings['app_name'])
 		result.setApplicationVersion(self.build_settings['version'])
@@ -83,7 +83,7 @@ class ApplicationContext:
 	def app_icon(self):
 		# On Mac, the OS shows the icon of the app bundle.
 		if not is_mac():
-			from PyQt5.QtGui import QIcon
+			from PySide6.QtGui import QIcon
 			return QIcon(self.get_resource('Icon.ico'))
 	@cached_property
 	def excepthook(self):

@@ -4,8 +4,8 @@ import hashlib
 import os
 from collections import OrderedDict
 
-from PyQt5.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, pyqtSignal
-from PyQt5.QtGui import QImage, QImageReader, QPixmap
+from PySide6.QtCore import QObject, QRunnable, QSize, Qt, QThreadPool, Signal
+from PySide6.QtGui import QImage, QImageReader, QPixmap
 
 
 _UNITS = ('B', 'KB', 'MB', 'GB', 'TB')
@@ -64,9 +64,9 @@ def _lru_set(od, key, value, cap):
 
 
 class _GeneratorSignals(QObject):
-	generated = pyqtSignal(str, object)  # (cache_key, QImage or None)
-	disk_loaded = pyqtSignal(str, object)  # (cache_key, QImage or None)
-	resolution_read = pyqtSignal(object, object)  # ((path, mtime_ns), QSize or None)
+	generated = Signal(str, object)  # (cache_key, QImage or None)
+	disk_loaded = Signal(str, object)  # (cache_key, QImage or None)
+	resolution_read = Signal(object, object)  # ((path, mtime_ns), QSize or None)
 
 
 class _Generator(QRunnable):
@@ -142,7 +142,7 @@ class ThumbnailCache(QObject):
 
 	# Emits the absolute source path of the thumbnail that just became
 	# available. The view uses this to repaint only the affected tile.
-	thumbnail_ready = pyqtSignal(str)
+	thumbnail_ready = Signal(str)
 
 	def __init__(self, cache_dir, parent=None):
 		super().__init__(parent)

@@ -200,8 +200,8 @@ class ThumbnailCacheDiskLoadTest(TestCase):
 	def test_disk_loader_emits_qimage(self):
 		# QPixmap is not safe outside the GUI thread, so the worker must
 		# emit a QImage:
-		from PyQt5.QtCore import Qt
-		from PyQt5.QtGui import QImage
+		from PySide6.QtCore import Qt
+		from PySide6.QtGui import QImage
 		from vitraj.impl.view.thumbnails import _DiskLoader
 		png = os.path.join(self.cache_dir, 'thumb.png')
 		image = QImage(8, 8, QImage.Format_RGB32)
@@ -218,9 +218,9 @@ class ThumbnailCacheDiskLoadTest(TestCase):
 		self.assertIsInstance(emitted[0][1], QImage)
 
 	def test_on_disk_loaded_converts_image_to_pixmap(self):
-		from PyQt5.QtCore import Qt
-		from PyQt5.QtGui import QImage, QPixmap
-		from PyQt5.QtWidgets import QApplication
+		from PySide6.QtCore import Qt
+		from PySide6.QtGui import QImage, QPixmap
+		from PySide6.QtWidgets import QApplication
 		_app = QApplication.instance() or QApplication([]) # noqa: F841 (QPixmap needs it)
 		cache = ThumbnailCache(self.cache_dir)
 		cache._disk_load_for['k'] = self.src

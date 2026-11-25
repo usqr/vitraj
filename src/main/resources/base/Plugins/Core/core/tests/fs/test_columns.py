@@ -1,5 +1,5 @@
 from core import Name, Size, Modified, _short_time_format
-from PyQt5.QtCore import QLocale
+from PySide6.QtCore import QLocale
 from core.tests import StubFS
 from core.tests.fs import StubFileSystem
 from vitraj.url import as_url

@@ -3,7 +3,7 @@ Logs a stack trace of the main thread when its event loop is blocked for
 longer than a threshold. It is off by default. To turn it on, set the
 environment variable VITRAJ_STALL_MS, for example VITRAJ_STALL_MS=100.
 """
-from PyQt5.QtCore import QTimer
+from PySide6.QtCore import QTimer
 from threading import Thread, get_ident
 from time import monotonic, sleep
 

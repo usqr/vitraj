@@ -155,7 +155,7 @@ Both are included in `requirements/base.txt`. The app works without them — pre
 
 | Package | Version | Notes |
 |---------|---------|-------|
-| PyQt5 | 5.15.11 | GUI framework |
+| PySide6 | 6.12.0 | GUI framework (Qt 6, LGPL v3) |
 | PyInstaller | 6.19.0 | App freezing/compilation |
 | pyobjc-core | 12.1 | macOS Objective-C bridge |
 | PyMuPDF | 1.27.2.2 | PDF preview (optional) |

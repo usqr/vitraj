@@ -7,22 +7,21 @@ from vitraj.impl.model.worker import Worker
 from vitraj.impl.util.qt.thread import run_in_main_thread
 from vitraj.impl.util.url import is_pardir
 from vitraj.url import dirname, splitscheme
-from PyQt5.QtCore import pyqtSignal, QSortFilterProxyModel, Qt
+from PySide6.QtCore import Signal, QSortFilterProxyModel, Qt
 
 from threading import Lock
 
 import errno
-import sip
 import sys
 
 class SortedFileSystemModel(QSortFilterProxyModel):
 
-	location_changed = pyqtSignal(str)
-	location_loaded = pyqtSignal(str)
-	file_renamed = pyqtSignal(str, str)
-	files_dropped = pyqtSignal(list, str, bool)
-	sort_order_changed = pyqtSignal(int, int)
-	transaction_ended = pyqtSignal()
+	location_changed = Signal(str)
+	location_loaded = Signal(str)
+	file_renamed = Signal(str, str)
+	files_dropped = Signal(list, str, bool)
+	sort_order_changed = Signal(int, int)
+	transaction_ended = Signal()
 
 	def __init__(self, parent, fs, null_location):
 		super().__init__(parent)
@@ -166,7 +165,8 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		self._already_visited.add(url)
 		self.location_changed.emit(url)
 		order = Qt.AscendingOrder if ascending else Qt.DescendingOrder
-		self.sort_order_changed.emit(sort_col_index, order)
+		# The signal carries ints. In PySide6, Qt.SortOrder is a Python enum:
+		self.sort_order_changed.emit(sort_col_index, order.value)
 		# Start model at the very end to ensure the above signals, in particular
 		# location_changed, are processed beforehand. The motivation for this is
 		# that the FilterBar relies on this signal to clear its filter. If we
@@ -174,8 +174,11 @@ class SortedFileSystemModel(QSortFilterProxyModel):
 		# the model may start loading files with the wrong filter.
 		new_model.start(callback)
 	def setSourceModel(self, model):
-		# Without this call, #sourceModel() sometimes returns None on Arch:
-		sip.transferto(model, None)
+		# Make this proxy the Qt parent of the model. Then C++ owns it, and
+		# Python never deletes it, also not in a worker thread. The model
+		# deletes itself in the main thread when it shuts down (see
+		# Model#_shutdown_async):
+		model.setParent(self)
 		super().setSourceModel(model)
 	def row_is_loaded(self, i):
 		source_row = self.mapToSource(self.index(i, 0)).row()

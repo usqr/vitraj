@@ -1,6 +1,6 @@
 from getpass import getuser
 from os.path import expanduser
-from PyQt5.QtCore import QFileInfo
+from PySide6.QtCore import QFileInfo
 
 import os
 

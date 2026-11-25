@@ -4,7 +4,7 @@ from vitraj.impl.util import Event
 from vitraj.impl.util.qt import DisplayRole, EditRole, DecorationRole, \
 	ToolTipRole, ItemIsDropEnabled, ItemIsSelectable, ItemIsEnabled, \
 	ItemIsEditable, ItemIsDragEnabled
-from PyQt5.QtCore import QModelIndex, QVariant, Qt
+from PySide6.QtCore import QModelIndex, Qt
 from threading import RLock
 
 class TableModel:
@@ -44,12 +44,12 @@ class TableModel:
 				return self._rows[index.row()].icon
 			elif role == ToolTipRole:
 				return super().data(index, DisplayRole)
-		return QVariant()
+		return None
 	def headerData(self, section, orientation, role=DisplayRole):
 		if orientation == Qt.Horizontal and role == DisplayRole \
 			and 0 <= section < self.columnCount():
-			return QVariant(self._column_headers[section])
-		return QVariant()
+			return self._column_headers[section]
+		return None
 	def flags(self, index):
 		if index == QModelIndex():
 			# The index representing our current location:

@@ -2,16 +2,16 @@ from vitraj.impl.util.platform_ import is_mac
 from vitraj.impl.util.qt import Key_Tab, Key_Down, Key_Up, Key_PageDown, \
 	Key_Home, Key_End, Key_PageUp, UserRole, AlignRight, AlignVCenter, \
 	NoFocus, FramelessWindowHint, AlignTop, AccessibleTextRole
-from PyQt5.QtCore import QAbstractListModel, QVariant, QModelIndex, QSize, \
-	QPointF, QRectF, QPoint, pyqtSignal
-from PyQt5.QtGui import QFont, QTextLayout, QTextCharFormat, QBrush, \
+from PySide6.QtCore import QAbstractListModel, QModelIndex, QSize, QPointF, \
+	QRectF, QPoint, Signal
+from PySide6.QtGui import QFont, QTextLayout, QTextCharFormat, QBrush, \
 	QKeySequence
-from PyQt5.QtWidgets import QDialog, QLayout, QFrame, QVBoxLayout, QLineEdit, \
-	QListView, QStyledItemDelegate, QApplication, QStyle
+from PySide6.QtWidgets import QDialog, QLayout, QFrame, QVBoxLayout, \
+	QLineEdit, QListView, QStyledItemDelegate, QApplication, QStyle
 
 class Quicksearch(QDialog):
 
-	shown = pyqtSignal()
+	shown = Signal()
 
 	def __init__(
 		self, parent, app, css, get_items, get_tab_completion=None, query='',
@@ -161,14 +161,14 @@ class QuicksearchListModel(QAbstractListModel):
 			self.endInsertRows()
 	def data(self, index, role):
 		if not index.isValid():
-			return QVariant()
+			return None
 		row = index.row()
 		if row < self.rowCount():
 			if role == ItemRole:
 				return self._items[row]
 			elif role == AccessibleTextRole:
 				return self._items[row].title
-		return QVariant()
+		return None
 
 ItemRole = UserRole
 

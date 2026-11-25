@@ -1,5 +1,5 @@
 from vitraj.impl.util.qt.thread import run_in_thread, Executor
-from PyQt5.QtCore import QThread
+from PySide6.QtCore import QThread
 from threading import get_ident
 
 class RunInThreadAT: # Instantiated in vitraj_integrationtest.test_qt
