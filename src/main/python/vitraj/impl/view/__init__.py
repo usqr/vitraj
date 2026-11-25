@@ -22,6 +22,8 @@ class FileListView(
 		super().__init__(parent, get_context_menu=get_context_menu)
 		self.key_press_event_filter = lambda event: False
 		self.setShowGrid(False)
+		# Themes color every second row with alternate-background-color:
+		self.setAlternatingRowColors(True)
 		self.setSortingEnabled(True)
 		self.setAttribute(WA_MacShowFocusRect, 0)
 		self.horizontalHeader().setStretchLastSection(True)

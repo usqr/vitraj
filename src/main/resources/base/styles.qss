@@ -3,6 +3,11 @@ QTableView, QMessageBox, QDialog, QListView, QPlainTextEdit {
 	border: none;
 }
 
+QTableView {
+	/* Same as the background: the default theme shows no row stripes. */
+	alternate-background-color: #272822;
+}
+
 QPlainTextEdit {
 	color: white;
 }
