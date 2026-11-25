@@ -444,7 +444,7 @@ class PreviewWidget(QWidget):
 		if self._stack.currentIndex() != 1 or self._canvas.pixmap() is None:
 			return
 		if zoom is not None:
-			zoom = clamp_zoom(zoom)
+			zoom = clamp_zoom(zoom, self._effective_zoom())
 		viewport = self._image_scroll.viewport()
 		if anchor is None:
 			anchor = QPointF(viewport.width() / 2, viewport.height() / 2)

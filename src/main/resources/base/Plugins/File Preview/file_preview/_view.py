@@ -15,16 +15,24 @@ MAX_ZOOM = ZOOM_STEPS[-1]
 # scales this image up when it paints:
 MAX_RENDER_PIXELS = 40 * 1000 * 1000
 
-def clamp_zoom(zoom):
-	return min(max(zoom, MIN_ZOOM), MAX_ZOOM)
+def clamp_zoom(zoom, current=None):
+	"""
+	Keep `zoom` in MIN_ZOOM..MAX_ZOOM. The fit zoom can be outside these
+	limits. So the range also contains `current`: a zoom in never makes the
+	image smaller, and a zoom out never makes it larger.
+	"""
+	low, high = MIN_ZOOM, MAX_ZOOM
+	if current is not None:
+		low, high = min(low, current), max(high, current)
+	return min(max(zoom, low), high)
 
 def step_zoom(current, direction):
 	"""The next step in ZOOM_STEPS above (direction > 0) or below `current`."""
 	if direction > 0:
 		bigger = (z for z in ZOOM_STEPS if z > current * 1.01)
-		return next(bigger, MAX_ZOOM)
+		return next(bigger, max(current, MAX_ZOOM))
 	smaller = (z for z in reversed(ZOOM_STEPS) if z < current / 1.01)
-	return next(smaller, MIN_ZOOM)
+	return next(smaller, min(current, MIN_ZOOM))
 
 def fit_zoom(natural, available):
 	"""The zoom that fits a QSizeF `natural` into the QSize `available`."""

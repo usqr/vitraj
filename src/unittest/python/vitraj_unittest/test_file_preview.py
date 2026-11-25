@@ -212,6 +212,15 @@ class ZoomMathTest(TestCase):
 		self.assertEqual(MAX_ZOOM, clamp_zoom(100))
 		self.assertEqual(MIN_ZOOM, clamp_zoom(0))
 		self.assertEqual(2, clamp_zoom(2))
+	def test_step_from_a_fit_zoom_outside_the_limits(self):
+		self.assertEqual(20, step_zoom(20, 1))
+		self.assertEqual(MAX_ZOOM, step_zoom(20, -1))
+		self.assertEqual(.05, step_zoom(.05, -1))
+		self.assertEqual(MIN_ZOOM, step_zoom(.05, 1))
+	def test_clamp_keeps_a_current_zoom_outside_the_limits(self):
+		self.assertEqual(20, clamp_zoom(25, 20))
+		self.assertEqual(16, clamp_zoom(16, 20))
+		self.assertEqual(.05, clamp_zoom(.04, .05))
 	def test_fit_uses_the_tighter_side(self):
 		self.assertEqual(.5, fit_zoom(QSizeF(200, 100), QSize(100, 100)))
 	def test_fit_of_empty_size_is_1(self):
@@ -279,6 +288,15 @@ class ZoomWidgetTest(TestCase):
 		after = self.widget._image_point_at(anchor)
 		self.assertAlmostEqual(before.x(), after.x(), delta=1)
 		self.assertAlmostEqual(before.y(), after.y(), delta=1)
+	def test_zoom_in_on_small_image_does_not_make_it_smaller(self):
+		image = QImage(4, 4, QImage.Format_RGB32)
+		self.widget.show_image_pixmap(QPixmap.fromImage(image), 'info')
+		fit = self.widget._effective_zoom()
+		self.assertGreater(fit, MAX_ZOOM)
+		self.widget.zoom_in()
+		self.assertGreaterEqual(self.widget._effective_zoom(), fit)
+		self.widget._on_wheel(_CtrlWheel(120))
+		self.assertGreaterEqual(self.widget._effective_zoom(), fit)
 	def test_no_zoom_without_image(self):
 		self.widget._show_message('text')
 		self.widget.zoom_in()
@@ -374,6 +392,16 @@ class PreviewCommandTest(TestCase):
 		from file_preview import _preview_page_count
 		pane = _PanelPane(None, panel_id='settings')
 		self.assertEqual(0, _preview_page_count(pane))
+
+class _CtrlWheel:
+	def __init__(self, delta):
+		self._delta = delta
+	def modifiers(self):
+		return Qt.ControlModifier
+	def angleDelta(self):
+		return QPointF(0, self._delta)
+	def position(self):
+		return QPointF(10, 10)
 
 class _PanelPane:
 	def __init__(self, widget, panel_id='preview'):
