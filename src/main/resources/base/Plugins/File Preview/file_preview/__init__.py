@@ -198,6 +198,8 @@ class PreviewWidget(QWidget):
 		self._page_index = 0
 		self._page_count = 0
 		self._displayed_page = None
+		# The widget of #show_widget(...), or None:
+		self._custom_widget = None
 		# A child of this widget, so it stops when the widget is deleted:
 		self._loading_timer = QTimer(self)
 		self._loading_timer.setSingleShot(True)
@@ -310,6 +312,9 @@ class PreviewWidget(QWidget):
 		if file_url == self._last_url:
 			return
 		self._last_url = file_url
+		# Stop a media player of the previous file at once, not after the
+		# debounce:
+		self._remove_custom_widget()
 		# Drop the result of the previous file at once. Else it could show
 		# (with its header) under the new file until the debounced render:
 		self._runner.cancel()
@@ -349,6 +354,27 @@ class PreviewWidget(QWidget):
 			pixmap = QPixmap.fromImage(result.image)
 			self.show_image_pixmap(pixmap, result.info, result.size)
 		self._run_async(load_fn, on_result)
+
+	def show_widget(self, widget):
+		"""
+		Public API for handler plugins. Show `widget` (for example a media
+		player) in the preview. When the user goes to another file, or when
+		the preview closes, the preview hides `widget` and deletes it. Thus
+		stop a player in hideEvent(...).
+		"""
+		self._remove_custom_widget()
+		self._loading_timer.stop()
+		self._custom_widget = widget
+		self._stack.addWidget(widget)
+		self._stack.setCurrentWidget(widget)
+
+	def show_message(self, text):
+		"""Public API for handler plugins: show `text` in the preview."""
+		self._show_message(text)
+
+	def custom_widget(self):
+		"""The widget of #show_widget(...), or None."""
+		return self._custom_widget
 
 	def show_pages_async(self, render_fn, error_prefix='Cannot load document'):
 		"""
@@ -405,6 +431,7 @@ class PreviewWidget(QWidget):
 		self._canvas.set_pixmap(None)
 		self._image_info.setText('')
 		self._last_url = None
+		self._remove_custom_widget()
 		self._fallback.setText('')
 		self._stack.setCurrentIndex(2)
 
@@ -496,6 +523,18 @@ class PreviewWidget(QWidget):
 			max(ceil(size.height()), viewport.height())
 		)
 
+	def _remove_custom_widget(self):
+		widget = self._custom_widget
+		if widget is None:
+			return
+		self._custom_widget = None
+		widget.hide()
+		self._stack.removeWidget(widget)
+		widget.deleteLater()
+		# Do not show the stale page of an earlier file until the next render:
+		self._fallback.setText('')
+		self._stack.setCurrentIndex(2)
+
 	def _show_pixmap(self, pixmap, info_text, natural):
 		self._canvas.set_pixmap(pixmap)
 		self._natural = natural
@@ -577,6 +616,7 @@ class PreviewWidget(QWidget):
 		self._runner.cancel()
 		self._loading_timer.stop()
 		self._reset_view()
+		self._remove_custom_widget()
 		if file_url is None:
 			self._show_message('No file selected')
 			return
