@@ -50,8 +50,9 @@ def _strip_unused_from_bundle():
 				os.unlink(dir_path)
 			elif os.path.isdir(dir_path):
 				rmtree(dir_path)
-	# Remove unused Qt frameworks. vitraj uses Core, Gui, Widgets, Network
-	# and Svg. PDF previews use PyMuPDF, not QtPdf. Remove each framework
+	# Remove unused Qt frameworks. vitraj uses Core, Gui, Widgets, Network,
+	# Svg, Multimedia and MultimediaWidgets (with FFmpeg, for the media
+	# preview). PDF previews use PyMuPDF, not QtPdf. Remove each framework
 	# together with the plugin that needs it (see below):
 	qt_lib = join(frameworks, 'PySide6', 'Qt', 'lib')
 	for unused_fw in (

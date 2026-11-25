@@ -11,6 +11,7 @@ _PATHS = [
 	join(_PLUGINS, 'Core'),
 	join(_PLUGINS, 'File Preview'),
 	join(_PLUGINS, 'File Preview PDF'),
+	join(_PLUGINS, 'File Preview Media'),
 ]
 
 class LazyImportsTest(TestCase):
@@ -24,6 +25,8 @@ class LazyImportsTest(TestCase):
 		self._assert_not_imported('file_preview', 'PIL')
 	def test_file_preview_pdf_does_not_import_pymupdf(self):
 		self._assert_not_imported('file_preview_pdf', 'fitz')
+	def test_file_preview_media_does_not_import_qt_multimedia(self):
+		self._assert_not_imported('file_preview_media', 'PySide6.QtMultimedia')
 	def _assert_not_imported(self, module, heavy_module):
 		code = (
 			'import sys; sys.path[:0] = %r; import %s; '
