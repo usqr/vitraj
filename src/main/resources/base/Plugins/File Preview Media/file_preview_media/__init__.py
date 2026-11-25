@@ -76,8 +76,7 @@ def _media_view(pane):
 	if preview is None:
 		return None
 	widget = preview.custom_widget()
-	# Do not import _player (and QtMultimedia) only to do an isinstance check:
-	if not callable(getattr(widget, 'toggle_play', None)):
+	if not getattr(widget, 'is_media_view', False):
 		return None
 	return widget
 

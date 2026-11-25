@@ -362,6 +362,8 @@ class PreviewWidget(QWidget):
 		the preview closes, the preview hides `widget` and deletes it. Thus
 		stop a player in hideEvent(...).
 		"""
+		if widget is self._custom_widget:
+			return
 		self._remove_custom_widget()
 		self._loading_timer.stop()
 		self._custom_widget = widget

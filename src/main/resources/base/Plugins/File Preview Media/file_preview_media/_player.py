@@ -1,7 +1,7 @@
 """
 The media player widget. Import this module late: QtMultimedia loads FFmpeg.
 """
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import QSignalBlocker, QSize, Qt, QUrl
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtMultimedia import QAudioOutput, QMediaMetaData, QMediaPlayer
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -28,8 +28,13 @@ class MediaView(QWidget):
 	Plays an audio or video file. It does not start playback by itself, and
 	it pauses when it becomes hidden (another file, or a closed panel).
 	"""
+	# The commands of this plugin look for this attribute. Thus they do not
+	# import this module (and QtMultimedia) for an isinstance check:
+	is_media_view = True
+
 	def __init__(self, path, parent=None):
 		super().__init__(parent)
+		self._failed = False
 		self._player = QMediaPlayer(self)
 		self._player.setAudioOutput(QAudioOutput(self))
 		self._video = QVideoWidget()
@@ -57,7 +62,10 @@ class MediaView(QWidget):
 		return self._player.playbackState() == QMediaPlayer.PlayingState
 
 	def hideEvent(self, event):
-		self._player.pause()
+		# Pause when the user goes to another file or closes the panel. Do
+		# not pause when the user only minimizes the window (spontaneous):
+		if not event.spontaneous():
+			self._player.pause()
 		super().hideEvent(event)
 
 	def _init_ui(self):
@@ -76,7 +84,9 @@ class MediaView(QWidget):
 		self._play_button.clicked.connect(self.toggle_play)
 		self._slider = QSlider(Qt.Horizontal)
 		self._slider.setFocusPolicy(Qt.NoFocus)
-		self._slider.sliderMoved.connect(self._player.setPosition)
+		# valueChanged, not sliderMoved: a click on the track also seeks.
+		# #_on_position(...) and #_on_duration(...) block this signal:
+		self._slider.valueChanged.connect(self._player.setPosition)
 		self._time = QLabel()
 		self._info = QLabel()
 		self._info.setAlignment(Qt.AlignCenter)
@@ -108,12 +118,14 @@ class MediaView(QWidget):
 		player.errorOccurred.connect(self._on_error)
 
 	def _on_duration(self, duration):
-		self._slider.setRange(0, max(duration, 0))
+		with QSignalBlocker(self._slider):
+			self._slider.setRange(0, max(duration, 0))
 		self._update_time()
 
 	def _on_position(self, position):
 		if not self._slider.isSliderDown():
-			self._slider.setValue(position)
+			with QSignalBlocker(self._slider):
+				self._slider.setValue(position)
 		self._update_time()
 
 	def _update_time(self):
@@ -131,12 +143,14 @@ class MediaView(QWidget):
 		self._cover.setVisible(not has_video)
 
 	def _on_metadata(self):
-		if not self._play_button.isEnabled():
+		if self._failed:
 			# Keep the error text of #_on_error(...).
 			return
 		metadata = self._player.metaData()
+		# Do not use hasVideo(): FFmpeg sends metaDataChanged before
+		# hasVideoChanged. An audio file has no resolution:
 		resolution = metadata.value(QMediaMetaData.Resolution)
-		if self._player.hasVideo() and resolution:
+		if isinstance(resolution, QSize) and resolution.isValid():
 			self._info.setText(
 				'%d x %d' % (resolution.width(), resolution.height())
 			)
@@ -158,6 +172,7 @@ class MediaView(QWidget):
 		self._cover.setPixmap(pixmap)
 
 	def _on_error(self, _error, message):
+		self._failed = True
 		self._video.hide()
 		self._cover.setPixmap(QPixmap())
 		self._cover.setText('Cannot play media: %s' % message)
