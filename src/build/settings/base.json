@@ -19,5 +19,5 @@
 	"core_plugin_in_freeze_dir": "${freeze_dir}/Plugins/Core",
 	"extra_pyinstaller_args": [],
 
-	"hidden_imports": ["requests", "fitz", "pymupdf", "PIL", "Foundation", "send2trash"]
+	"hidden_imports": ["requests", "fitz", "pymupdf", "PIL", "Foundation", "send2trash", "PySide6.QtMultimedia", "PySide6.QtMultimediaWidgets"]
 }

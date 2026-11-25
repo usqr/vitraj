@@ -1,0 +1,5 @@
+[
+	{ "keys": ["Cmd+Alt+P"], "command": "preview_play_pause" },
+	{ "keys": ["Cmd+Alt+Right"], "command": "preview_seek_forward" },
+	{ "keys": ["Cmd+Alt+Left"], "command": "preview_seek_backward" }
+]

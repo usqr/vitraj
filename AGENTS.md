@@ -41,6 +41,7 @@ requirements/                   # Per-platform dependency files
 | `src/main/resources/base/Plugins/Core/Key Bindings (Mac).json` | macOS-specific key bindings |
 | `src/main/resources/base/Plugins/File Preview/file_preview/__init__.py` | File preview widget (text, images, directories) |
 | `src/main/resources/base/Plugins/File Preview PDF/file_preview_pdf/__init__.py` | PDF preview addon (PyMuPDF) |
+| `src/main/resources/base/Plugins/File Preview Media/file_preview_media/__init__.py` | Audio and video preview addon (QtMultimedia) |
 | `src/main/resources/base/Plugins/Settings/settings/__init__.py` | Settings panel (Cmd+,) |
 | `src/main/resources/base/Plugins/Theme Editor/theme_editor/__init__.py` | Theme editor with color pickers |
 | `src/build/python/build_impl/mac.py` | macOS freeze/sign/bundle logic |
@@ -157,6 +158,8 @@ cp -r "My Plugin" "~/Library/Application Support/vitraj/Plugins/Third-party/"
 3. The load and render functions must not touch a widget. Give a `QImage`, not a `QPixmap`.
 4. The widget supplies the zoom (toolbar, Cmd/Ctrl + wheel, pinch, `preview_zoom_*` commands) and the page controls (`preview_next_page` / `preview_previous_page`).
 5. See `File Preview PDF` plugin for a complete example
+6. For a widget of your own (for example a media player), call `widget.show_widget(my_widget)` in the main thread. The preview hides and deletes `my_widget` when the user goes to another file or closes the panel. Stop playback in `hideEvent(...)`. See the `File Preview Media` plugin.
+7. To show a text, call `widget.show_message(text)`.
 
 ### Adding a panel (PanelManager)
 

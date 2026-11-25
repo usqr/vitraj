@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+### Added
+
+- **Audio and video in the file preview**: the new File Preview Media plugin shows
+  video files (MP4, MOV, WebM, MKV, AVI, MPEG, OGV) and audio files (MP3, M4A, AAC,
+  WAV, FLAC, Ogg, Opus, AIFF). A video shows its first frame. An audio file shows its
+  cover art, title, and artist. Playback does not start by itself: press Cmd+Alt+P
+  (Mac) or Ctrl+Alt+P to play or pause. Press Cmd+Alt+Left/Right (Mac) or
+  Ctrl+Alt+Left/Right to seek 5 seconds.
+- **Plugin API**: `PreviewWidget.show_widget(widget)` shows a widget of a plugin in the
+  preview. `PreviewWidget.show_message(text)` shows a text.
+
 ## 2.0.0 (2026-11-25)
 ### Changed (plugin API)
 
