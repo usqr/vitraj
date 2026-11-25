@@ -1,7 +1,12 @@
 # Changelog
 
-## 1.7.4 (unreleased)
+## 2.0.0 (2026-11-25)
 ### Changed (plugin API)
+
+- **BREAKING: vitraj uses PySide6 (Qt 6), not PyQt5 (Qt 5)**: plugins that import
+  PyQt5 continue to load: vitraj maps these imports to PySide6. But the map cannot
+  hide all differences. For example, enum values through an instance (`self.Yes`)
+  do not work. Write new plugins with PySide6.
 
 - **`DirectoryPane.set_path()` is asynchronous**: the pane resolves the path in a
   background thread, so a slow drive no longer blocks the window. When `set_path()`
