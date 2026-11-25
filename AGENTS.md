@@ -151,8 +151,12 @@ cp -r "My Plugin" "~/Library/Application Support/vitraj/Plugins/Third-party/"
 ### Adding a new file preview type
 
 1. Register a handler via `PreviewWidget.register_handler('.ext', handler_fn)` in your plugin's `__init__.py`
-2. The handler receives `(widget, path)` — use `widget.show_image_pixmap(pixmap, info)` for images
-3. See `File Preview PDF` plugin for a complete example
+2. The handler receives `(widget, path)`. Do slow work in the worker thread:
+   - For one image, call `widget.show_image_async(load_fn)`. `load_fn()` returns a `PreviewImage(image, info, header, size)`.
+   - For a document with pages, call `widget.show_pages_async(render_fn)`. `render_fn(page_index, page_view)` returns a `PreviewPage(image, info, header, page_count, size)`. Use `page_view.render_scale(size)` to get the scale of the image. The widget calls `render_fn` again when the page or the zoom changes.
+3. The load and render functions must not touch a widget. Give a `QImage`, not a `QPixmap`.
+4. The widget supplies the zoom (toolbar, Cmd/Ctrl + wheel, pinch, `preview_zoom_*` commands) and the page controls (`preview_next_page` / `preview_previous_page`).
+5. See `File Preview PDF` plugin for a complete example
 
 ### Adding a panel (PanelManager)
 

@@ -19,7 +19,11 @@
   - Text files (100+ extensions + UTF-8 auto-detection, truncated at 1MB)
   - Images: PNG, JPG, GIF, BMP, SVG, ICO, WEBP with resolution and file size info bar
   - AVIF images via Pillow with resolution info
-  - PDF rendering (first page at 150 DPI) via PyMuPDF with page count
+  - PDF rendering via PyMuPDF, with all pages. Go to the next or previous page with the
+    arrow buttons, Cmd+Alt+Down / Cmd+Alt+Up (Mac), or Ctrl+PgDown / Ctrl+PgUp.
+  - Zoom for images and PDF pages: the toolbar buttons, Cmd/Ctrl + mouse wheel, pinch
+    (Mac), Cmd/Ctrl+= (zoom in), Cmd/Ctrl+- (zoom out), Cmd/Ctrl+0 (actual size), and
+    Cmd/Ctrl+9 (fit). vitraj renders PDF pages again at the zoom, so the text stays sharp.
   - Directory stats (file count, folder count, total size)
   - Binary/unsupported file fallback with file size
 - **Parent directory entry (..)**: Toggle via Command Palette to show `..` at the top of
