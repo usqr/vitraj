@@ -342,6 +342,15 @@ class PagesWidgetTest(TestCase):
 			self.widget.show_preview(as_url(str(path)))
 		self.assertEqual(0, self.widget.page_count())
 		self.assertFalse(self.widget._page_label.isVisibleTo(self.widget))
+	def test_no_render_of_old_file_before_debounced_render(self):
+		# A fast cursor move: the render of the new file waits.
+		self.widget._render_debounced._timer.start()
+		self.widget.show_preview(as_url('/nonexistent/b.txt'))
+		self.widget.next_page()
+		self.widget.zoom_actual()
+		qwait(150)
+		self.assertEqual([0], [index for index, _ in self.renders])
+		self.assertNotEqual('page 1', self.widget._header.text())
 
 class PreviewCommandTest(TestCase):
 	def test_calls_preview_method_in_main_thread(self):

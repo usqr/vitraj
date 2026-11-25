@@ -314,6 +314,9 @@ class PreviewWidget(QWidget):
 		# (with its header) under the new file until the debounced render:
 		self._runner.cancel()
 		self._request_page_debounced.cancel()
+		# A zoom, a resize, or a page key before the debounced render must
+		# not render a page of the previous file:
+		self._render_page = None
 		self._loading_timer.stop()
 		if file_url is not None:
 			self._header.setText(basename(file_url))
