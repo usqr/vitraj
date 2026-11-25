@@ -312,6 +312,68 @@ def test_preview_panel(h):
     time.sleep(0.5)
     h.screenshot('07_preview_closed')
 
+def test_pdf_pages_zoom(h):
+    """Preview a 3-page PDF, go to the next page, and zoom with the keys."""
+    import fitz
+    from tempfile import mkdtemp
+    tmp_dir = mkdtemp(prefix='vitraj-pdf-')
+    doc = fitz.open()
+    for number in range(1, 4):
+        page = doc.new_page()
+        page.insert_text((72, 144), 'Page %d' % number, fontsize=64)
+        page.insert_text((72, 200), 'small text for zoom', fontsize=8)
+    doc.save(os.path.join(tmp_dir, 'three.pdf'))
+    doc.close()
+
+    h.navigate(0, tmp_dir)
+    h.press_key(Qt.Key_Home)
+    # Qt maps Cmd to ControlModifier on macOS:
+    cmd = Qt.ControlModifier
+    is_mac = sys.platform == 'darwin'
+    # The preview key is Cmd+Y on macOS and F3 on the other platforms:
+    toggle_key = (Qt.Key_Y, cmd) if is_mac else (Qt.Key_F3,)
+    h.press_key(*toggle_key)
+
+    def preview():
+        panes = h.get_window_panes()
+        return h.window.get_active_panel(panes[0])[1]
+
+    def page_shown():
+        active = h.window.get_active_panel(h.get_window_panes()[0])
+        return bool(active) and active[1].page_count() > 0
+
+    deadline = time.time() + 10
+    while not h.run_on_ui(page_shown) and time.time() < deadline:
+        time.sleep(.1)
+
+    def state():
+        p = preview()
+        return p._header.text(), p._page_label.text(), p._zoom_label.text()
+
+    print('  Opened: %s' % (h.run_on_ui(state),))
+    h.screenshot('20_pdf_page_1')
+    page_key = (Qt.Key_Down, cmd | Qt.AltModifier) if is_mac \
+        else (Qt.Key_PageDown, cmd)
+    h.press_key(*page_key)
+    time.sleep(1)
+    print('  Next page: %s' % (h.run_on_ui(state),))
+    h.screenshot('21_pdf_page_2')
+    assert 'page 2 of 3' in h.run_on_ui(state)[0]
+
+    h.press_key(Qt.Key_0, cmd)
+    h.press_key(Qt.Key_Equal, cmd)
+    h.press_key(Qt.Key_Equal, cmd)
+    time.sleep(1)
+    print('  Zoomed: %s' % (h.run_on_ui(state),))
+    h.screenshot('22_pdf_zoom_150')
+    assert h.run_on_ui(state)[2] == '150%'
+
+    h.press_key(Qt.Key_9, cmd)
+    time.sleep(1)
+    print('  Fit: %s' % (h.run_on_ui(state),))
+    h.screenshot('23_pdf_fit')
+    h.press_key(*toggle_key)
+
 def test_settings_panel(h):
     """Open settings panel and verify it displays."""
     # Send Cmd+, (Qt.MetaModifier = Cmd on Mac)
@@ -420,6 +482,7 @@ ALL_TESTS = [
     ('cursor_movement', test_cursor_movement),
     ('preview_panel', test_preview_panel),
     ('preview_types', test_preview_types),
+    ('pdf_pages_zoom', test_pdf_pages_zoom),
     ('settings_panel', test_settings_panel),
     ('dual_pane', test_dual_pane_navigation),
     ('widget_tree', test_widget_tree),

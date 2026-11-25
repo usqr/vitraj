@@ -15,14 +15,16 @@ for _plugin in ('File Preview', 'File Preview PDF'):
 	if join(_PLUGINS, _plugin) not in sys.path:
 		sys.path.append(join(_PLUGINS, _plugin))
 
-from PySide6.QtCore import QSize, Qt # noqa: E402
-from PySide6.QtGui import QImage # noqa: E402
+from PySide6.QtCore import QPointF, QSize, QSizeF, Qt # noqa: E402
+from PySide6.QtGui import QImage, QPixmap # noqa: E402
 from vitraj_unittest.qt_wait import qwait # noqa: E402
 from PySide6.QtWidgets import QApplication # noqa: E402
 
-from file_preview import PreviewWidget, PreviewImage, _directory_info, \
-	_load_qt_image, _LOADING_DELAY_MS # noqa: E402
+from file_preview import PreviewWidget, PreviewImage, PreviewPage, \
+	_directory_info, _load_qt_image, _LOADING_DELAY_MS # noqa: E402
 from file_preview._async import AsyncRunner, Debouncer # noqa: E402
+from file_preview._view import PageView, capped_scale, clamp_zoom, \
+	fit_zoom, step_zoom, MAX_RENDER_PIXELS, MAX_ZOOM, MIN_ZOOM # noqa: E402
 from vitraj.url import as_url # noqa: E402
 
 import file_preview_pdf # noqa: E402
@@ -196,6 +198,218 @@ class PreviewWidgetTest(TestCase):
 	def _text(self):
 		return self.widget._text_view.toPlainText()
 
+class ZoomMathTest(TestCase):
+	def test_step_up_and_down(self):
+		self.assertEqual(1.25, step_zoom(1, 1))
+		self.assertEqual(.75, step_zoom(1, -1))
+	def test_step_from_a_value_between_steps(self):
+		self.assertEqual(.5, step_zoom(.3, 1))
+		self.assertEqual(.25, step_zoom(.3, -1))
+	def test_step_stops_at_the_limits(self):
+		self.assertEqual(MAX_ZOOM, step_zoom(MAX_ZOOM, 1))
+		self.assertEqual(MIN_ZOOM, step_zoom(MIN_ZOOM, -1))
+	def test_clamp(self):
+		self.assertEqual(MAX_ZOOM, clamp_zoom(100))
+		self.assertEqual(MIN_ZOOM, clamp_zoom(0))
+		self.assertEqual(2, clamp_zoom(2))
+	def test_step_from_a_fit_zoom_outside_the_limits(self):
+		self.assertEqual(20, step_zoom(20, 1))
+		self.assertEqual(MAX_ZOOM, step_zoom(20, -1))
+		self.assertEqual(.05, step_zoom(.05, -1))
+		self.assertEqual(MIN_ZOOM, step_zoom(.05, 1))
+	def test_clamp_keeps_a_current_zoom_outside_the_limits(self):
+		self.assertEqual(20, clamp_zoom(25, 20))
+		self.assertEqual(16, clamp_zoom(16, 20))
+		self.assertEqual(.05, clamp_zoom(.04, .05))
+	def test_fit_uses_the_tighter_side(self):
+		self.assertEqual(.5, fit_zoom(QSizeF(200, 100), QSize(100, 100)))
+	def test_fit_of_empty_size_is_1(self):
+		self.assertEqual(1, fit_zoom(QSizeF(), QSize(100, 100)))
+	def test_capped_scale_keeps_a_small_scale(self):
+		self.assertEqual(2, capped_scale(QSizeF(100, 100), 2))
+	def test_capped_scale_limits_the_pixels(self):
+		natural = QSizeF(1000, 1000)
+		scale = capped_scale(natural, 100)
+		pixels = natural.width() * natural.height() * scale * scale
+		self.assertAlmostEqual(MAX_RENDER_PIXELS, pixels, delta=1)
+	def test_render_scale_with_zoom(self):
+		view = PageView(1.5, QSize(100, 100), 2)
+		self.assertEqual(3, view.render_scale(QSizeF(10, 10)))
+	def test_render_scale_fit(self):
+		view = PageView(None, QSize(100, 50), 2)
+		self.assertEqual(1, view.render_scale(QSizeF(200, 100)))
+
+class ZoomWidgetTest(TestCase):
+	def setUp(self):
+		self.widget = PreviewWidget()
+		self.widget.resize(300, 300)
+		self.widget.show()
+		image = QImage(200, 100, QImage.Format_RGB32)
+		image.fill(Qt.red)
+		self.widget.show_image_pixmap(
+			QPixmap.fromImage(image), 'info', QSize(200, 100)
+		)
+		self.dpr = self.widget.devicePixelRatioF()
+	def tearDown(self):
+		self.widget._runner.wait()
+		self.widget.deleteLater()
+	def test_fit_has_no_scroll_bars(self):
+		self.assertEqual(
+			self.widget._image_scroll.maximumViewportSize(),
+			self.widget._canvas.size()
+		)
+	def test_actual_size(self):
+		self.widget.zoom_actual()
+		self.assertEqual('100%', self.widget._zoom_label.text())
+		self.assertEqual(
+			QSizeF(200 / self.dpr, 100 / self.dpr),
+			self.widget._canvas._size
+		)
+	def test_zoom_in_from_actual_size(self):
+		self.widget.zoom_actual()
+		self.widget.zoom_in()
+		self.assertEqual(1.25, self.widget._zoom)
+	def test_large_zoom_makes_canvas_scroll(self):
+		self.widget._set_zoom(MAX_ZOOM)
+		viewport = self.widget._image_scroll.viewport().size()
+		self.assertGreater(self.widget._canvas.width(), viewport.width())
+	def test_fit_after_zoom(self):
+		self.widget._set_zoom(MAX_ZOOM)
+		self.widget.zoom_fit()
+		self.assertIsNone(self.widget._zoom)
+	def test_wheel_zoom_keeps_point_under_cursor(self):
+		# Larger than the view at zoom 1, on any screen:
+		image = QImage(2000, 2000, QImage.Format_RGB32)
+		self.widget.show_image_pixmap(QPixmap.fromImage(image), 'info')
+		self.widget._set_zoom(1)
+		anchor = QPointF(40, 30)
+		before = self.widget._image_point_at(anchor)
+		self.widget._set_zoom(1.5, anchor)
+		after = self.widget._image_point_at(anchor)
+		self.assertAlmostEqual(before.x(), after.x(), delta=1)
+		self.assertAlmostEqual(before.y(), after.y(), delta=1)
+	def test_zoom_in_on_small_image_does_not_make_it_smaller(self):
+		image = QImage(4, 4, QImage.Format_RGB32)
+		self.widget.show_image_pixmap(QPixmap.fromImage(image), 'info')
+		fit = self.widget._effective_zoom()
+		self.assertGreater(fit, MAX_ZOOM)
+		self.widget.zoom_in()
+		self.assertGreaterEqual(self.widget._effective_zoom(), fit)
+		self.widget._on_wheel(_CtrlWheel(120))
+		self.assertGreaterEqual(self.widget._effective_zoom(), fit)
+	def test_no_zoom_without_image(self):
+		self.widget._show_message('text')
+		self.widget.zoom_in()
+		self.assertIsNone(self.widget._zoom)
+	def test_new_file_resets_zoom(self):
+		self.widget.zoom_actual()
+		with TemporaryDirectory() as tmp_dir:
+			path = Path(tmp_dir, 'a.txt')
+			path.write_text('x')
+			self.widget.show_preview(as_url(str(path)))
+		self.assertIsNone(self.widget._zoom)
+
+class PagesWidgetTest(TestCase):
+	def setUp(self):
+		self.widget = PreviewWidget()
+		self.widget.resize(300, 300)
+		self.renders = []
+		self.widget.show_pages_async(self._render)
+		self.assertTrue(_wait_until(lambda: self.widget.page_count() == 3))
+	def tearDown(self):
+		self.widget._runner.wait()
+		self.widget.deleteLater()
+	def _render(self, index, view):
+		self.renders.append((index, view.zoom))
+		size = QSizeF(10, 10)
+		pixels = round(size.width() * view.render_scale(size))
+		image = QImage(pixels, pixels, QImage.Format_RGB32)
+		return PreviewPage(image, 'info', 'page %d' % index, 3, size)
+	def test_first_page(self):
+		self.assertEqual([(0, None)], self.renders)
+		self.assertEqual('page 0', self.widget._header.text())
+		self.assertEqual('1 / 3', self.widget._page_label.text())
+	def test_next_page(self):
+		self.widget.next_page()
+		self.assertTrue(_wait_until(
+			lambda: self.widget._header.text() == 'page 1'
+		))
+		self.assertEqual('2 / 3', self.widget._page_label.text())
+	def test_fast_page_moves_render_only_last_page(self):
+		self.widget.next_page()
+		self.widget.next_page()
+		self.assertTrue(_wait_until(
+			lambda: self.widget._header.text() == 'page 2'
+		))
+		qwait(150)
+		self.assertEqual([0, 1, 2], [index for index, _ in self.renders])
+	def test_page_stops_at_the_last_page(self):
+		self.widget.go_to_page(10)
+		self.assertEqual(2, self.widget._page_index)
+	def test_previous_page_on_first_page_does_nothing(self):
+		self.widget.previous_page()
+		qwait(150)
+		self.assertEqual(1, len(self.renders))
+	def test_zoom_renders_again(self):
+		self.widget.zoom_actual()
+		self.assertTrue(_wait_until(lambda: (0, 1.0) in self.renders))
+	def test_new_file_forgets_pages(self):
+		with TemporaryDirectory() as tmp_dir:
+			path = Path(tmp_dir, 'a.txt')
+			path.write_text('x')
+			self.widget.show_preview(as_url(str(path)))
+		self.assertEqual(0, self.widget.page_count())
+		self.assertFalse(self.widget._page_label.isVisibleTo(self.widget))
+	def test_no_render_of_old_file_before_debounced_render(self):
+		# A fast cursor move: the render of the new file waits.
+		self.widget._render_debounced._timer.start()
+		self.widget.show_preview(as_url('/nonexistent/b.txt'))
+		self.widget.next_page()
+		self.widget.zoom_actual()
+		qwait(150)
+		self.assertEqual([0], [index for index, _ in self.renders])
+		self.assertNotEqual('page 1', self.widget._header.text())
+
+class PreviewCommandTest(TestCase):
+	def test_calls_preview_method_in_main_thread(self):
+		from file_preview import _call_preview
+		from threading import Thread
+		from vitraj.impl.util.qt.thread import is_in_main_thread
+		calls = []
+		class Preview:
+			def zoom_in(self):
+				calls.append(is_in_main_thread())
+		pane = _PanelPane(Preview())
+		Thread(
+			target=_call_preview, args=(pane, 'zoom_in'), daemon=True
+		).start()
+		self.assertTrue(_wait_until(lambda: calls))
+		self.assertEqual([True], calls)
+	def test_no_preview_does_nothing(self):
+		from file_preview import _call_preview
+		_call_preview(_PanelPane(None, panel_id='settings'), 'zoom_in')
+	def test_page_count_without_preview_is_0(self):
+		from file_preview import _preview_page_count
+		pane = _PanelPane(None, panel_id='settings')
+		self.assertEqual(0, _preview_page_count(pane))
+
+class _CtrlWheel:
+	def __init__(self, delta):
+		self._delta = delta
+	def modifiers(self):
+		return Qt.ControlModifier
+	def angleDelta(self):
+		return QPointF(0, self._delta)
+	def position(self):
+		return QPointF(10, 10)
+
+class _PanelPane:
+	def __init__(self, widget, panel_id='preview'):
+		class Window:
+			def get_active_panel(self, _pane):
+				return panel_id, widget
+		self.window = Window()
+
 @skipIf(file_preview_pdf._load_fitz() is None, 'PyMuPDF is not installed')
 class RenderPdfTest(TestCase):
 	def test_missing_pymupdf_raises_in_worker(self):
@@ -203,19 +417,37 @@ class RenderPdfTest(TestCase):
 		file_preview_pdf._load_fitz = lambda: None
 		self.addCleanup(setattr, file_preview_pdf, '_load_fitz', load_before)
 		with self.assertRaises(ImportError):
-			file_preview_pdf._render_pdf('/nonexistent.pdf')
+			file_preview_pdf._render_pdf('/nonexistent.pdf', 0, _VIEW)
 	def test_renders_first_page(self):
+		result = self._render(0, _VIEW)
+		self.assertFalse(result.image.isNull())
+		self.assertEqual('doc.pdf (page 1 of 2)', result.header)
+		self.assertEqual(2, result.page_count)
+	def test_renders_second_page(self):
+		result = self._render(1, _VIEW)
+		self.assertEqual('doc.pdf (page 2 of 2)', result.header)
+		self.assertEqual(QSizeF(300, 200), result.size)
+	def test_page_index_is_clamped(self):
+		result = self._render(5, _VIEW)
+		self.assertEqual('doc.pdf (page 2 of 2)', result.header)
+	def test_image_has_the_pixels_of_the_zoom(self):
+		result = self._render(1, PageView(2, QSize(100, 100), 1.5))
+		self.assertEqual(QSize(900, 600), result.image.size())
+	def test_fit_zoom(self):
+		result = self._render(1, PageView(None, QSize(150, 150), 1))
+		self.assertEqual(QSize(150, 100), result.image.size())
+	def _render(self, index, view):
 		fitz = file_preview_pdf._load_fitz()
 		with TemporaryDirectory() as tmp_dir:
 			path = join(tmp_dir, 'doc.pdf')
 			doc = fitz.open()
 			doc.new_page()
-			doc.new_page()
+			doc.new_page(width=300, height=200)
 			doc.save(path)
 			doc.close()
-			result = file_preview_pdf._render_first_page(fitz, path)
-		self.assertFalse(result.image.isNull())
-		self.assertEqual('doc.pdf (2 pages)', result.header)
+			return file_preview_pdf._render_page(fitz, path, index, view)
+
+_VIEW = PageView(1, QSize(100, 100), 1)
 
 class UpdatePreviewTest(TestCase):
 	def test_reads_cursor_in_main_thread(self):

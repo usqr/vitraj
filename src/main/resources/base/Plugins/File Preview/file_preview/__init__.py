@@ -3,10 +3,15 @@ from vitraj.impl.util.qt.thread import run_in_main_thread
 from vitraj.url import splitscheme, basename, as_human_readable
 from collections import namedtuple
 from file_preview._async import AsyncRunner, Debouncer
-from PySide6.QtCore import Qt, QTimer
+from file_preview._view import ImageCanvas, PageView, clamp_zoom, fit_zoom, \
+	step_zoom
+from PySide6.QtCore import QEvent, QPointF, QSize, QSizeF, Qt, QTimer
 from PySide6.QtGui import QPixmap, QFont, QImage, QImageReader
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPlainTextEdit, \
-	QStackedWidget, QScrollArea, QSizePolicy, QApplication
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, \
+	QPlainTextEdit, QStackedWidget, QScrollArea, QSizePolicy, QApplication, \
+	QToolButton
+
+from math import ceil
 
 from functools import lru_cache
 
@@ -51,13 +56,32 @@ _DEBOUNCE_MS = 80
 # Show "Loading..." only when a preview takes longer than this:
 _LOADING_DELAY_MS = 150
 
-PreviewImage = namedtuple('PreviewImage', ('image', 'info', 'header'))
-PreviewImage.__new__.__defaults__ = (None,)
+PreviewImage = namedtuple('PreviewImage', ('image', 'info', 'header', 'size'))
+PreviewImage.__new__.__defaults__ = (None, None)
 PreviewImage.__doc__ = """
 The result of a load function for PreviewWidget#show_image_async(...).
 `image` is a QImage (not a QPixmap: QPixmap is not safe outside the main
-thread). `header`, when not None, replaces the text of the header.
+thread). `header`, when not None, replaces the text of the header. `size`,
+when not None, is the QSize of the original image in pixels: the size at a
+zoom of 100%. A loader can give a smaller `image` than this size.
 """
+
+PreviewPage = namedtuple(
+	'PreviewPage', ('image', 'info', 'header', 'page_count', 'size')
+)
+PreviewPage.__doc__ = """
+The result of a render function for PreviewWidget#show_pages_async(...).
+`image` is a QImage of the page. `size` is the QSizeF of the page at a zoom
+of 100%, in logical pixels (for a PDF: in points). `header`, when not None,
+replaces the text of the header.
+"""
+
+# Render a page again when the view needs more than this factor of the
+# width of its image (else it is not sharp)...
+_RERENDER_ABOVE = 1.05
+# ... or less than this factor (else it uses memory for nothing):
+_RERENDER_BELOW = .5
+_WHEEL_ZOOM_PER_NOTCH = 1.25
 
 def _format_size(size):
 	if size < 1024:
@@ -95,9 +119,9 @@ def _load_image(path, ext, max_size):
 	image, original = _load_qt_image(path, max_size)
 	w, h = original.width(), original.height()
 	if ext == '.svg':
-		return PreviewImage(image, 'SVG canvas: %d x %d' % (w, h))
-	size = _file_size(path)
-	return PreviewImage(image, '%d x %d px  |  %s' % (w, h, _format_size(size)))
+		return PreviewImage(image, 'SVG canvas: %d x %d' % (w, h), None, original)
+	info = '%d x %d px  |  %s' % (w, h, _format_size(_file_size(path)))
+	return PreviewImage(image, info, None, original)
 
 def _load_pillow_image(path, max_size):
 	pil_image = _pil_image()
@@ -112,7 +136,7 @@ def _load_pillow_image(path, max_size):
 			data, rgba.width, rgba.height, QImage.Format_RGBA8888
 		).copy()
 	info = '%d x %d px  |  %s' % (w, h, _format_size(_file_size(path)))
-	return PreviewImage(image, info)
+	return PreviewImage(image, info, None, QSize(w, h))
 
 def _file_size(path):
 	try:
@@ -161,10 +185,19 @@ class PreviewWidget(QWidget):
 
 	def __init__(self, parent=None):
 		super().__init__(parent)
-		self._current_pixmap = None
 		self._last_url = None
 		self._runner = AsyncRunner(self)
 		self._render_debounced = Debouncer(self._render, _DEBOUNCE_MS, self)
+		self._request_page_debounced = Debouncer(
+			lambda _: self._request_page(), _DEBOUNCE_MS, self
+		)
+		# The size of the shown image at a zoom of 100%, in logical pixels:
+		self._natural = QSizeF()
+		self._zoom = None # None means "fit"
+		self._render_page = None
+		self._page_index = 0
+		self._page_count = 0
+		self._displayed_page = None
 		# A child of this widget, so it stops when the widget is deleted:
 		self._loading_timer = QTimer(self)
 		self._loading_timer.setSingleShot(True)
@@ -201,27 +234,7 @@ class PreviewWidget(QWidget):
 		self._text_view.setFont(font)
 		self._stack.addWidget(self._text_view)
 
-		image_page = QWidget()
-		image_layout = QVBoxLayout()
-		image_layout.setContentsMargins(0, 0, 0, 0)
-		image_layout.setSpacing(0)
-		self._image_info = QLabel()
-		self._image_info.setStyleSheet(
-			'QLabel { padding: 2px 8px; font-size: 11px; }'
-		)
-		image_layout.addWidget(self._image_info)
-		self._image_scroll = QScrollArea()
-		self._image_scroll.setWidgetResizable(True)
-		self._image_scroll.setAlignment(Qt.AlignCenter)
-		self._image_label = QLabel()
-		self._image_label.setAlignment(Qt.AlignCenter)
-		self._image_label.setSizePolicy(
-			QSizePolicy.Ignored, QSizePolicy.Ignored
-		)
-		self._image_scroll.setWidget(self._image_label)
-		image_layout.addWidget(self._image_scroll)
-		image_page.setLayout(image_layout)
-		self._stack.addWidget(image_page)
+		self._stack.addWidget(self._create_image_page())
 
 		self._fallback = QLabel()
 		self._fallback.setAlignment(Qt.AlignCenter)
@@ -232,6 +245,67 @@ class PreviewWidget(QWidget):
 		layout.addWidget(self._stack)
 		self.setLayout(layout)
 
+	def _create_image_page(self):
+		page = QWidget()
+		layout = QVBoxLayout()
+		layout.setContentsMargins(0, 0, 0, 0)
+		layout.setSpacing(0)
+		layout.addWidget(self._create_toolbar())
+		self._image_scroll = QScrollArea()
+		self._image_scroll.setAlignment(Qt.AlignCenter)
+		self._canvas = ImageCanvas()
+		self._image_scroll.setWidget(self._canvas)
+		# Resize, Cmd/Ctrl + wheel, and pinch go to #eventFilter(...):
+		self._image_scroll.viewport().installEventFilter(self)
+		layout.addWidget(self._image_scroll)
+		page.setLayout(layout)
+		return page
+
+	def _create_toolbar(self):
+		toolbar = QWidget()
+		toolbar.setStyleSheet(
+			'QLabel, QToolButton { font-size: 11px; } '
+			'QLabel { padding: 2px 4px; }'
+		)
+		layout = QHBoxLayout()
+		layout.setContentsMargins(4, 0, 4, 0)
+		layout.setSpacing(0)
+		self._previous_page_button = self._tool_button(
+			'◀', 'Previous page', self.previous_page
+		)
+		self._page_label = QLabel()
+		self._next_page_button = self._tool_button(
+			'▶', 'Next page', self.next_page
+		)
+		self._image_info = QLabel()
+		# Let a long text get cut in a narrow panel:
+		self._image_info.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+		self._zoom_label = QLabel()
+		widgets = (
+			self._previous_page_button, self._page_label,
+			self._next_page_button, self._image_info,
+			self._tool_button('−', 'Zoom out', self.zoom_out),
+			self._zoom_label,
+			self._tool_button('+', 'Zoom in', self.zoom_in),
+			self._tool_button('Fit', 'Zoom to fit', self.zoom_fit),
+			self._tool_button('1:1', 'Actual size', self.zoom_actual),
+		)
+		for widget in widgets:
+			layout.addWidget(widget, 1 if widget is self._image_info else 0)
+		toolbar.setLayout(layout)
+		self._update_page_controls()
+		return toolbar
+
+	def _tool_button(self, text, tooltip, on_click):
+		button = QToolButton()
+		button.setText(text)
+		button.setToolTip(tooltip)
+		button.setAutoRaise(True)
+		# Keep the keyboard focus in the file pane:
+		button.setFocusPolicy(Qt.NoFocus)
+		button.clicked.connect(on_click)
+		return button
+
 	def show_preview(self, file_url):
 		if file_url == self._last_url:
 			return
@@ -239,17 +313,26 @@ class PreviewWidget(QWidget):
 		# Drop the result of the previous file at once. Else it could show
 		# (with its header) under the new file until the debounced render:
 		self._runner.cancel()
+		self._request_page_debounced.cancel()
+		# A zoom, a resize, or a page key before the debounced render must
+		# not render a page of the previous file:
+		self._render_page = None
 		self._loading_timer.stop()
 		if file_url is not None:
 			self._header.setText(basename(file_url))
 		self._render_debounced(file_url)
 
-	def show_image_pixmap(self, pixmap, info_text):
-		"""Public API for handler plugins to display a pixmap with info."""
-		self._current_pixmap = pixmap
-		self._image_info.setText(info_text)
-		self._scale_image()
-		self._stack.setCurrentIndex(1)
+	def show_image_pixmap(self, pixmap, info_text, size=None):
+		"""
+		Public API for handler plugins to display a pixmap with info. `size`
+		is the QSize in pixels at a zoom of 100%. The default is the size of
+		`pixmap`.
+		"""
+		if size is None:
+			size = pixmap.size()
+		dpr = self.devicePixelRatioF()
+		natural = QSizeF(size.width() / dpr, size.height() / dpr)
+		self._show_pixmap(pixmap, info_text, natural)
 
 	def show_image_async(self, load_fn, error_prefix='Cannot load image'):
 		"""
@@ -263,30 +346,237 @@ class PreviewWidget(QWidget):
 				return
 			if result.header is not None:
 				self._header.setText(result.header)
-			self.show_image_pixmap(QPixmap.fromImage(result.image), result.info)
+			pixmap = QPixmap.fromImage(result.image)
+			self.show_image_pixmap(pixmap, result.info, result.size)
 		self._run_async(load_fn, on_result)
+
+	def show_pages_async(self, render_fn, error_prefix='Cannot load document'):
+		"""
+		Public API for handler plugins, for a document with pages. Call
+		render_fn(page_index, page_view) in a worker thread. It must return a
+		PreviewPage and must not touch any widget. `page_view` is a PageView:
+		use page_view.render_scale(size) to get the scale of the image. The
+		widget calls render_fn again when the user goes to another page or
+		changes the zoom.
+		"""
+		self._render_page = render_fn
+		self._page_error = error_prefix
+		self._request_page(first=True)
+
+	def next_page(self):
+		self.go_to_page(self._page_index + 1)
+
+	def previous_page(self):
+		self.go_to_page(self._page_index - 1)
+
+	def go_to_page(self, index):
+		if self._page_count < 2:
+			return
+		index = min(max(index, 0), self._page_count - 1)
+		if index == self._page_index:
+			return
+		self._page_index = index
+		self._update_page_controls()
+		self._request_page_debounced(None)
+
+	def page_count(self):
+		"""The number of pages. 0 if the preview does not show a document."""
+		return self._page_count
+
+	def zoom_in(self):
+		self._set_zoom(step_zoom(self._effective_zoom(), 1))
+
+	def zoom_out(self):
+		self._set_zoom(step_zoom(self._effective_zoom(), -1))
+
+	def zoom_fit(self):
+		self._set_zoom(None)
+
+	def zoom_actual(self):
+		self._set_zoom(1.0)
 
 	def clear(self):
 		self._render_debounced.cancel()
 		self._runner.cancel()
 		self._loading_timer.stop()
+		self._reset_view()
 		self._header.setText('')
 		self._text_view.clear()
-		self._image_label.clear()
+		self._canvas.set_pixmap(None)
 		self._image_info.setText('')
-		self._current_pixmap = None
 		self._last_url = None
 		self._fallback.setText('')
 		self._stack.setCurrentIndex(2)
 
-	def resizeEvent(self, event):
-		super().resizeEvent(event)
-		if self._current_pixmap and self._stack.currentIndex() == 1:
-			self._scale_image()
+	def eventFilter(self, watched, event):
+		if watched is not self._image_scroll.viewport():
+			return False
+		event_type = event.type()
+		if event_type == QEvent.Resize:
+			self._update_canvas()
+			self._rerender_if_necessary()
+		elif event_type == QEvent.Wheel:
+			return self._on_wheel(event)
+		elif event_type == QEvent.NativeGesture:
+			return self._on_native_gesture(event)
+		return False
+
+	def _on_wheel(self, event):
+		if not event.modifiers() & Qt.ControlModifier:
+			return False
+		notches = event.angleDelta().y() / 120
+		factor = _WHEEL_ZOOM_PER_NOTCH ** notches
+		self._set_zoom(self._effective_zoom() * factor, event.position())
+		return True
+
+	def _on_native_gesture(self, event):
+		if event.gestureType() != Qt.ZoomNativeGesture:
+			return False
+		factor = 1 + event.value()
+		self._set_zoom(self._effective_zoom() * factor, event.position())
+		return True
+
+	def _set_zoom(self, zoom, anchor=None):
+		"""
+		Set the zoom (None means "fit"). Keep the image point under `anchor`
+		(a QPointF in the viewport) at the same position.
+		"""
+		if self._stack.currentIndex() != 1 or self._canvas.pixmap() is None:
+			return
+		if zoom is not None:
+			zoom = clamp_zoom(zoom, self._effective_zoom())
+		viewport = self._image_scroll.viewport()
+		if anchor is None:
+			anchor = QPointF(viewport.width() / 2, viewport.height() / 2)
+		point = self._image_point_at(anchor)
+		self._zoom = zoom
+		self._update_canvas()
+		self._scroll_image_point_to(point, anchor)
+		self._rerender_if_necessary()
+
+	def _effective_zoom(self):
+		if self._zoom is not None:
+			return self._zoom
+		return fit_zoom(self._natural, self._image_scroll.maximumViewportSize())
+
+	def _image_offset(self):
+		"""The position of the image in the canvas."""
+		zoom = self._effective_zoom()
+		return QPointF(
+			(self._canvas.width() - self._natural.width() * zoom) / 2,
+			(self._canvas.height() - self._natural.height() * zoom) / 2
+		)
+
+	def _image_point_at(self, anchor):
+		"""The point of the image (at a zoom of 100%) under `anchor`."""
+		scroll = QPointF(
+			self._image_scroll.horizontalScrollBar().value(),
+			self._image_scroll.verticalScrollBar().value()
+		)
+		return (scroll + anchor - self._image_offset()) / self._effective_zoom()
+
+	def _scroll_image_point_to(self, point, anchor):
+		scroll = point * self._effective_zoom() + self._image_offset() - anchor
+		self._image_scroll.horizontalScrollBar().setValue(round(scroll.x()))
+		self._image_scroll.verticalScrollBar().setValue(round(scroll.y()))
+
+	def _update_canvas(self):
+		"""Give the canvas the size for the zoom."""
+		zoom = self._effective_zoom()
+		size = self._natural * zoom
+		self._canvas.set_display_size(size)
+		self._zoom_label.setText('%d%%' % round(zoom * 100))
+		if self._zoom is None:
+			# No scroll bars:
+			self._canvas.resize(self._image_scroll.maximumViewportSize())
+			return
+		viewport = self._image_scroll.viewport().size()
+		self._canvas.resize(
+			max(ceil(size.width()), viewport.width()),
+			max(ceil(size.height()), viewport.height())
+		)
+
+	def _show_pixmap(self, pixmap, info_text, natural):
+		self._canvas.set_pixmap(pixmap)
+		self._natural = natural
+		self._image_info.setText(info_text)
+		self._stack.setCurrentIndex(1)
+		self._update_canvas()
+
+	def _reset_view(self):
+		"""Forget the zoom and the pages of the last file."""
+		self._request_page_debounced.cancel()
+		self._zoom = None
+		self._render_page = None
+		self._page_index = 0
+		self._page_count = 0
+		self._displayed_page = None
+		self._update_page_controls()
+
+	def _update_page_controls(self):
+		has_pages = self._page_count > 1
+		for widget in (
+			self._previous_page_button, self._page_label,
+			self._next_page_button
+		):
+			widget.setVisible(has_pages)
+		if not has_pages:
+			return
+		index = self._page_index
+		self._page_label.setText('%d / %d' % (index + 1, self._page_count))
+		self._previous_page_button.setEnabled(index > 0)
+		self._next_page_button.setEnabled(index < self._page_count - 1)
+
+	def _page_view(self):
+		return PageView(
+			self._zoom, self._image_scroll.maximumViewportSize(),
+			self.devicePixelRatioF()
+		)
+
+	def _request_page(self, first=False):
+		render, index, view = self._render_page, self._page_index, \
+			self._page_view()
+		if render is None:
+			return
+		def load():
+			return render(index, view)
+		def on_result(result):
+			self._on_page(result, index)
+		if first:
+			self._run_async(load, on_result)
+		else:
+			# Show the last image (not "Loading...") until the new one comes:
+			self._runner.run(load, on_result)
+
+	def _on_page(self, result, index):
+		if isinstance(result, Exception):
+			self._show_message('%s: %s' % (self._page_error, result))
+			return
+		if result.header is not None:
+			self._header.setText(result.header)
+		self._page_count = result.page_count
+		self._update_page_controls()
+		new_page = index != self._displayed_page
+		self._displayed_page = index
+		self._show_pixmap(QPixmap.fromImage(result.image), result.info, result.size)
+		if new_page:
+			self._image_scroll.verticalScrollBar().setValue(0)
+
+	def _rerender_if_necessary(self):
+		"""Render the page again if its image is too small or too large."""
+		pixmap = self._canvas.pixmap()
+		if self._displayed_page is None or pixmap is None:
+			return
+		scale = self._page_view().render_scale(self._natural)
+		ratio = self._natural.width() * scale / max(pixmap.width(), 1)
+		if _RERENDER_BELOW <= ratio <= _RERENDER_ABOVE:
+			return
+		self._request_page_debounced(None)
 
 	def _render(self, file_url):
 		self._runner.cancel()
 		self._loading_timer.stop()
+		self._reset_view()
 		if file_url is None:
 			self._show_message('No file selected')
 			return
@@ -341,15 +631,6 @@ class PreviewWidget(QWidget):
 		max_size = _max_image_size(self)
 		self.show_image_async(lambda: _load_image(path, ext, max_size))
 
-	def _scale_image(self):
-		if not self._current_pixmap:
-			return
-		available = self._image_scroll.size()
-		scaled = self._current_pixmap.scaled(
-			available, Qt.KeepAspectRatio, Qt.SmoothTransformation
-		)
-		self._image_label.setPixmap(scaled)
-
 	def _show_by_sniffing(self, path):
 		try:
 			with open(path, 'rb') as f:
@@ -390,7 +671,7 @@ class PreviewWidget(QWidget):
 		self._run_async(lambda: _directory_info(path), on_result)
 
 	def _show_message(self, text):
-		self._current_pixmap = None
+		self._canvas.set_pixmap(None)
 		self._fallback.setText(text)
 		self._stack.setCurrentIndex(2)
 
@@ -424,6 +705,98 @@ class ExitPreview(DirectoryPaneCommand):
 
 	def is_visible(self):
 		return self.pane.window.is_panel_active(self.pane, _PANEL_ID)
+
+
+class PreviewNextPage(DirectoryPaneCommand):
+
+	aliases = ('Preview: next page',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'next_page')
+
+	def is_visible(self):
+		return _preview_page_count(self.pane) > 1
+
+
+class PreviewPreviousPage(DirectoryPaneCommand):
+
+	aliases = ('Preview: previous page',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'previous_page')
+
+	def is_visible(self):
+		return _preview_page_count(self.pane) > 1
+
+
+class PreviewZoomIn(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom in',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_in')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomOut(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom out',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_out')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomFit(DirectoryPaneCommand):
+
+	aliases = ('Preview: zoom to fit',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_fit')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+class PreviewZoomActual(DirectoryPaneCommand):
+
+	aliases = ('Preview: actual size',)
+
+	def __call__(self):
+		_call_preview(self.pane, 'zoom_actual')
+
+	def is_visible(self):
+		return _get_preview(self.pane) is not None
+
+
+def _get_preview(pane):
+	"""The PreviewWidget of `pane`, or None if the preview is not open."""
+	active = pane.window.get_active_panel(pane)
+	if not active or active[0] != _PANEL_ID:
+		return None
+	return active[1]
+
+
+def _preview_page_count(pane):
+	preview = _get_preview(pane)
+	return 0 if preview is None else preview.page_count()
+
+
+@run_in_main_thread
+def _call_preview(pane, method_name):
+	# vitraj runs commands in a background thread. Widgets need the main one.
+	preview = _get_preview(pane)
+	if preview is None:
+		return
+	try:
+		getattr(preview, method_name)()
+	except RuntimeError:
+		# Qt deleted the widget in the meantime (the panel was closed).
+		pass
 
 
 class PreviewModeListener(DirectoryPaneListener):

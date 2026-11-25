@@ -1,0 +1,8 @@
+[
+	{ "keys": ["Ctrl+PgDown"], "command": "preview_next_page" },
+	{ "keys": ["Ctrl+PgUp"], "command": "preview_previous_page" },
+	{ "keys": ["Ctrl+="], "command": "preview_zoom_in" },
+	{ "keys": ["Ctrl+-"], "command": "preview_zoom_out" },
+	{ "keys": ["Ctrl+9"], "command": "preview_zoom_fit" },
+	{ "keys": ["Ctrl+0"], "command": "preview_zoom_actual" }
+]
